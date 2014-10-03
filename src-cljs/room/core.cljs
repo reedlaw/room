@@ -23,16 +23,26 @@
   (def chsk-send! send-fn) ; ChannelSocket's send API fn
   (def chsk-state state)   ; Watchable, read-only atom
   )
+(def messages (js->clj (.-messages js/window)))
+
+(def rooms (js->clj (.-rooms js/window)))
 
 (def msgs (atom (sorted-map)))
 
-(def counter (atom 0))
+(def rms (atom (sorted-map)))
 
-(defn add-message [text]
-  (let [id (swap! counter inc)]
-    (swap! msgs assoc id {:id id :text text})))
+(def message-counter (atom 0))
 
-(add-message "Test")
+(defn add-message [author text time]
+  (let [id (swap! message-counter inc)]
+    (swap! msgs assoc id {:id id :author author :text text :time time})))
+
+(doseq [m messages]
+  (let [author {:name (get m "name")
+                :email (get m "email")
+                :hash (get m "hash")
+                :id (get m "id")}]
+    (add-message author (get m "text") (get m "created_at"))))
 
 (defmulti event-msg-handler :id) ; Dispatch on event-id
 ;; Wrap for logging, catching, etc.:
@@ -53,8 +63,14 @@
 
   (defmethod event-msg-handler :chsk/recv
     [{:as ev-msg :keys [?data]}]
-    (let [msg (:text (:message (last ?data)))]
-      (add-message msg))))
+    (let [d (last ?data)
+          msg (:message d)
+          uid (:uid d)
+          author {:name (:name d)
+                  :email (:email d)
+                  :hash (:hash d)
+                  :id uid}]
+      (add-message author msg (js/moment)))))
 
 (defn send-message [text]
   (logf "Sending message: %s" text)
@@ -68,27 +84,61 @@
                 (if-not (empty? v) (on-save v))
                 (stop))]
     (fn [props]
-      [:div {:id "message"}
-       [:input {:id "message-input"
-                :placeholder "Message"
-                :type "text"
-                :value @val
-                :on-key-up #(case (.-which %)
-                              13 (save)
-                              27 (stop)
-                              nil)
-                :on-change #(reset! val (-> % .-target .-value))}]])))
+      [:input {:id "message-input"
+               :placeholder "Message"
+               :type "text"
+               :value @val
+               :on-key-up #(case (.-which %)
+                             13 (save)
+                             27 (stop)
+                             nil)
+               :on-change #(reset! val (-> % .-target .-value))}])))
+
+(defn message-list [{:keys [messages]}]
+  (fn [props]
+    [:ul#message-list
+     (for [message (vals @msgs)]
+       (let [author (:author message)
+             id (:id message)]
+         [:div.message {:key id}
+          [:a.avatar {:href (:name author)}
+           [:img {:src (str "http://www.gravatar.com/avatar/" (:hash author) "?s=30")}]]
+          [:div.message-body
+           [:a.username {:href (:name author)} (:name author)]
+           [:span.time (.format (.local (.utc js/moment (:time message))) "h:mm a")]
+           [:span.text {:dangerouslySetInnerHTML {:__html (:text message)}}]]]))]))
+
+(def message-box (with-meta message-list
+                   (let [should-scroll (atom false)]
+                     (merge
+                      {:component-will-update
+                       (fn [this new-argv]
+                         (let [n (reagent/dom-node this)]
+                           (if (identical? (+ (.-offsetHeight n) (.-scrollTop n)) (.-scrollHeight n))
+                             (reset! should-scroll true))))}
+                      {:component-did-update
+                       (fn [this]
+                         (when @should-scroll
+                           (let [n (reagent/dom-node this)]
+                             (set! (.-scrollTop n) (.-scrollHeight n))
+                             (reset! should-scroll false))))}
+                      {:component-did-mount
+                       (fn [this]
+                         (let [n (reagent/dom-node this)]
+                           (set! (.-scrollTop n) (.-scrollHeight n))
+                           (reset! should-scroll false)))}))))
 
 (defn home []
   (let [filt (atom :all)]
     (fn []
       (let [messages (vals @msgs)]
-        [:div
-         [:ul#message-list
-          (for [message messages]
-            (do 
-              [:li (:text message)]))]
-         [message-input {:on-save send-message}]]))))
+        (do
+          [:div#content
+           [:div#body
+            [message-box {:messages messages}]]
+           [:div#footer
+            [:div {:id "message"}
+             [message-input {:on-save send-message}]]]])))))
 
 (defn page []
   [(:page @state)])

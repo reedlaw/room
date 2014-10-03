@@ -1,4 +1,4 @@
-// Compiled by ClojureScript 0.0-2342
+// Compiled by ClojureScript 0.0-2356
 goog.provide('reagent.impl.reactimport');
 goog.require('cljs.core');
 reagent.impl.reactimport.React = React;

@@ -1,4 +1,4 @@
-// Compiled by ClojureScript 0.0-2342
+// Compiled by ClojureScript 0.0-2356
 goog.provide('reagent.core');
 goog.require('cljs.core');
 goog.require('reagent.impl.util');
@@ -171,20 +171,20 @@ var atom = null;
 var atom__1 = (function (x){return reagent.ratom.atom.call(null,x);
 });
 var atom__2 = (function() { 
-var G__10507__delegate = function (x,rest){return cljs.core.apply.call(null,reagent.ratom.atom,x,rest);
+var G__10541__delegate = function (x,rest){return cljs.core.apply.call(null,reagent.ratom.atom,x,rest);
 };
-var G__10507 = function (x,var_args){
+var G__10541 = function (x,var_args){
 var rest = null;if (arguments.length > 1) {
   rest = cljs.core.array_seq(Array.prototype.slice.call(arguments, 1),0);} 
-return G__10507__delegate.call(this,x,rest);};
-G__10507.cljs$lang$maxFixedArity = 1;
-G__10507.cljs$lang$applyTo = (function (arglist__10508){
-var x = cljs.core.first(arglist__10508);
-var rest = cljs.core.rest(arglist__10508);
-return G__10507__delegate(x,rest);
+return G__10541__delegate.call(this,x,rest);};
+G__10541.cljs$lang$maxFixedArity = 1;
+G__10541.cljs$lang$applyTo = (function (arglist__10542){
+var x = cljs.core.first(arglist__10542);
+var rest = cljs.core.rest(arglist__10542);
+return G__10541__delegate(x,rest);
 });
-G__10507.cljs$core$IFn$_invoke$arity$variadic = G__10507__delegate;
-return G__10507;
+G__10541.cljs$core$IFn$_invoke$arity$variadic = G__10541__delegate;
+return G__10541;
 })()
 ;
 atom = function(x,var_args){
@@ -222,9 +222,9 @@ var args = null;if (arguments.length > 1) {
   args = cljs.core.array_seq(Array.prototype.slice.call(arguments, 1),0);} 
 return partial__delegate.call(this,f,args);};
 partial.cljs$lang$maxFixedArity = 1;
-partial.cljs$lang$applyTo = (function (arglist__10509){
-var f = cljs.core.first(arglist__10509);
-var args = cljs.core.rest(arglist__10509);
+partial.cljs$lang$applyTo = (function (arglist__10543){
+var f = cljs.core.first(arglist__10543);
+var args = cljs.core.rest(arglist__10543);
 return partial__delegate(f,args);
 });
 partial.cljs$core$IFn$_invoke$arity$variadic = partial__delegate;

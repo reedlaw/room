@@ -2,8 +2,12 @@
   (:require
    [compojure.core :as comp :refer (defroutes GET POST ANY)]
    [compojure.route :as route]
+   [clojure.data.json :as json]
    [hiccup.core :as hiccup]
+   [hiccup.page :refer (html5 include-css include-js)]
+   [hiccup.element :refer [javascript-tag]]
    [ring.middleware.session :refer [wrap-session]]
+   [ring.middleware.session.cookie :refer [cookie-store]]
    [ring.middleware.params :refer [wrap-params]]
    [ring.util.response :refer [response redirect content-type]]
    [org.httpkit.server :as http-kit-server]
@@ -17,16 +21,22 @@
    [buddy.auth :refer (authenticated?)]
    [buddy.auth.backends.session :refer [session-backend]]
    [buddy.auth.middleware :refer [wrap-authentication]]
-   [buddy.hashers.bcrypt :as hs]))
+   [buddy.hashers.bcrypt :as hs]
+   [buddy.core.hash :as hash]
+   [buddy.core.codecs :refer :all]
+   [markdown.core :refer :all]
+   [yesql.core :refer [defquery defqueries]]))
 
 (defn- logf [fmt & xs] (println (apply format fmt xs)))
 
-(def users {"reed" {:username "reed"
-                    :password (hs/make-password "password")
-                    :roles #{::admin}}
-            "winnie" {:username "winnie"
-                    :password (hs/make-password "password")
-                    :roles #{::user}}})
+(def db-spec {:classname "org.postgresql.Driver"
+              :subprotocol "postgresql"
+              :subname "//localhost:5432/room"
+              :user "postgres"
+              :password "secret"})
+
+(defqueries "room/users.sql")
+(defqueries "room/messages.sql")
 
 (def backend (session-backend))
 
@@ -40,32 +50,46 @@
   (def connected-uids                connected-uids) ; Watchable, read-only atom
   )
 
+(defn timestamp-to-string [key value]
+  (if (= key :created_at)
+    (.getTime value)
+    value))
+
 (defn landing-pg-handler [req]
   (if (authenticated? req)
-    (hiccup/html
-     [:div
-      [:a {:href "/logout"} "Welcome "(get-in req [:session :identity]) " -- logout"]]
-     [:div {:id "app"}]
-     [:script {:src "/js/jquery.js"}]
-     [:script {:src "/js/react.js"}]
-     [:script {:src "/js/goog/base.js"}]
-     [:script {:src "/js/app.js"}]
-     [:script "goog.require('room.core')"])
-    (hiccup/html
+    (let [messages (map #(assoc % :text (md-to-html-string (:text %)) :hash (bytes->hex (hash/md5 (:email %)))) (get-messages db-spec)) ]
+      (html5
+       [:head
+        [:title "Room"]
+        (include-css "/css/style.css")
+        (javascript-tag
+         (str "messages = " (json/write-str messages :value-fn timestamp-to-string)
+              ";\nrooms = " (json/write-str (get-rooms db-spec))))]
+       [:div.container
+        [:div#nav
+         [:div#rooms]
+         [:div#usermenu
+          [:img#userimage {:src (str "http://www.gravatar.com/avatar/" (bytes->hex (hash/md5 (:email (:session req)))) "?s=100")}]
+          [:span#username (get-in req [:session :name])]
+          [:a {:href "/logout"} "Logout"]]
+         ]
+        [:div {:id "app"}]]
+       [:script {:src "/js/jquery.js"}]
+       [:script {:src "/js/react.js"}]
+       [:script {:src "/js/goog/base.js"}]
+       [:script {:src "/js/app.js"}]
+       [:script {:src "/js/moment.min.js"}]
+       [:script "goog.require('room.core')"]))
+    (html5
      [:div
       [:a {:href "/login"} "login"]]
-     [:div {:id "app"}]
-     [:script {:src "/js/jquery.js"}]
-     [:script {:src "/js/react.js"}]
-     [:script {:src "/js/goog/base.js"}]
-     [:script {:src "/js/app.js"}]
-     [:script "goog.require('room.core')"])))
+     [:div {:id "app"}])))
 
 (defn login-ctrl
   [request]
   (cond
    (= (:request-method request) :get)
-   (hiccup/html
+   (html5
     [:div
      [:form {:action "/login"
              :method "post"}
@@ -80,11 +104,11 @@
    (let [username (get-in request [:form-params "username"])
          password (get-in request [:form-params "password"])
          session (-> (:session request)
-                     (assoc :identity (keyword username)))]
-     (if (and (contains? users username)
-              (hs/check-password password (get-in users [username :password])))
+                     (assoc :name username))
+         user (first (get-user-by-name db-spec username))]
+     (if (and user (hs/check-password password (:password user)))
        (-> (redirect (get-in request [:query-params :next] "/"))
-           (assoc :session session))
+           (assoc :session (assoc session :identity (:id user) :email (:email user))))
        (hiccup/html
         [:div
          "Not authorized"])))))
@@ -112,7 +136,7 @@
     (-> app
         (wrap-authentication backend)
         (wrap-params)
-        (wrap-session)))
+        (wrap-session {:store (cookie-store {:key "a 16-byt3 s3cr3t"})})))
 
 (defmulti event-msg-handler :id) ; Dispatch on event-id
 ;; Wrap for logging, catching, etc.:
@@ -123,8 +147,7 @@
 (do ; Server-side methods
   (defmethod event-msg-handler :default ; Fallback
     [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-    (let [session (:session ring-req)
-          uid     (:uid     session)]
+    (let [uid     (get-in ring-req [:session :identity])]
       (logf "Unhandled event: %s" event)
       (when-not (:dummy-reply-fn (meta ?reply-fn))
         (?reply-fn {:umatched-event-as-echoed-from-from-server event}))))
@@ -132,7 +155,18 @@
   ;; Add your (defmethod event-msg-handler <event-id> [ev-msg] <body>)s here...
   (defmethod event-msg-handler :room/req
     [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]
-    (chsk-send! nil [:chat/broadcast {:message (last event)}]))
+    (let [session (:session ring-req)
+          identity (:identity session)
+          name (:name session)
+          email (:email session)
+          message (:text (last event))]
+      (save-message! db-spec message "general" identity)
+      (doseq [uid (:any @connected-uids)]
+        (chsk-send! uid [:chat/broadcast {:message (md-to-html-string message)
+                                          :uid identity
+                                          :name name
+                                          :email email
+                                          :hash (bytes->hex (hash/md5 email))}]))))
   )
 
 (defonce http-server_ (atom nil))
