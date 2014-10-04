@@ -73,16 +73,17 @@
        (= command :chat/broadcast) (let [msg-id (:id params)
                                          msg (:message params)
                                          uid (:uid params)
+                                         room (:room params)
                                          author {:name (:name params)
                                                  :email (:email params)
                                                  :hash (:hash params)
                                                  :id uid}]
-                                (add-message msg-id author msg (js/moment)))
+                                (add-message msg-id author msg (js/moment) room))
        (= command :message/delete) (delete-message params)))))
 
 (defn send-message [text]
   (logf "Sending message: %s" text)
-  (chsk-send! [:message/send {:text text}]))
+  (chsk-send! [:message/send {:text text :room (session/get :current-corner)}]))
 
 (defn send-delete-message [id]
   (chsk-send! [:message/delete id]))
@@ -179,15 +180,17 @@
             [message-input-box {:on-save send-message}]]]]]))))
 
 (defroute "/" []
-  (session/put! :current-corner "general"))
+  (do
+    (session/put! :current-corner "general")))
 
 (defroute "/corners/:id" [id]
-  (session/put! :current-corner id))
-
-(def current-corner (atom nil))
+  (do
+    (session/put! :current-corner id)))
 
 (defn page []
   [(home (session/get :current-corner))])
+
+(def current-corner (atom nil))
 
 (defn init! []
   (session/put! :current-corner "general")

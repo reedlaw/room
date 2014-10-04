@@ -160,13 +160,15 @@
           name (:name session)
           email (:email session)
           message (:text (last event))
-          record (create-message<! db-spec message "general" identity)]
+          room (:room (last event))
+          record (create-message<! db-spec message room identity)]
       (doseq [uid (:any @connected-uids)]
         (chsk-send! uid [:chat/broadcast {:id (:id record)
                                           :message (md-to-html-string message)
                                           :uid identity
                                           :name name
                                           :email email
+                                          :room (:room record)
                                           :hash (bytes->hex (hash/md5 email))}]))))
 
   (defmethod event-msg-handler :message/delete
