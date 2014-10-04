@@ -1,0 +1,125 @@
+body {
+    width: 100%;
+    height: 100%;
+}
+
+.container {
+    position: relative;
+    height: 100%;
+}
+
+#app {
+    margin-left: 200px;
+    height: 100%;
+}
+
+#nav {
+    position: fixed;
+    left: 10px;
+    width: 200px;
+    height: 100%;
+}
+
+#username {
+    position: relative;
+    top: -80px;
+    left: 110px;
+}
+
+fa-sign-out {
+    position: relative;
+    top: -120px;
+    left: 110px;
+    color:  #ccc;
+}
+
+fa-sign-out:hover {
+    color: grey;
+}
+
+#content {
+    position: relative;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    
+}
+
+#body {
+    position: relative;
+    top: 0px;
+    width: 100%;
+    margin-bottom: 100px;
+}
+
+ul#message-list {
+    position: relative;
+    top: 20px;
+    bottom: 50px;
+    overflow: auto;
+    height: 100%;
+    width: 100%;
+}
+
+.message {
+    position: relative;
+}
+
+a.avatar {
+    position: relative;
+    top: 0px;
+    left: 0px;
+    width:20%;
+}
+
+.message-body {
+    position: relative;
+    top: -40px;
+    left: 32px;
+    width: 80%;
+}
+
+a.username {   
+    color: black;
+    padding: 0 5 5 15px;
+    font-family: Helvetica;
+    font-size: 20px;
+}
+
+span.time {
+    color: grey;
+    padding: 5px;
+    font-family: Helvetica;
+    font-size: 12px;
+}
+
+span.text {
+    position: relative;
+    width: 90%;
+    top: -15px;
+    color: rgba(68,3,16,1);
+    font-family: Serif;
+    font-size: 15px;
+    display: block;
+}
+
+i.fa.fa-times {
+    position: absolute;
+    top: 8px;
+    right: 0px;
+    color: #ccc;
+    cursor: pointer;
+}
+i.fa.fa-times:hover {
+    color: grey;
+}
+#footer {
+    position: fixed;
+    bottom: 0px;
+    left: 200px;
+    height: 50px;
+    width: 100%;
+    margin: 0px;
+}
+
+

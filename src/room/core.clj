@@ -57,24 +57,24 @@
 
 (defn landing-pg-handler [req]
   (if (authenticated? req)
-    (let [messages (map #(assoc % :text (md-to-html-string (:text %)) :hash (bytes->hex (hash/md5 (:email %)))) (get-messages db-spec)) ]
+    (let [messages (map #(assoc % :text (md-to-html-string (:text %)) :hash (bytes->hex (hash/md5 (:email %)))) (get-messages db-spec))
+          email (:email (:session req))
+          hash (bytes->hex (hash/md5 email))
+          user {:id (:identity (:session req))
+                :email email
+                :name (:name (:session req))
+                :hash hash}]
       (html5
        [:head
         [:title "Room"]
         (include-css "/css/style.css")
+        (include-css "/css/font-awesome/css/font-awesome.css")
         (javascript-tag
          (str "messages = " (json/write-str messages :value-fn timestamp-to-string)
-              ";\nrooms = " (json/write-str (get-rooms db-spec))))]
+              ";\nrooms = " (json/write-str (get-rooms db-spec))
+              ";\nuser = " (json/write-str user)))]
        [:div.container
-        [:div#nav
-         [:div#rooms]
-         [:div#usermenu
-          [:img#userimage {:src (str "http://www.gravatar.com/avatar/" (bytes->hex (hash/md5 (:email (:session req)))) "?s=100")}]
-          [:span#username (get-in req [:session :name])]
-          [:a {:href "/logout"} "Logout"]]
-         ]
         [:div {:id "app"}]]
-       [:script {:src "/js/jquery.js"}]
        [:script {:src "/js/react.js"}]
        [:script {:src "/js/goog/base.js"}]
        [:script {:src "/js/app.js"}]
@@ -153,21 +153,34 @@
         (?reply-fn {:umatched-event-as-echoed-from-from-server event}))))
 
   ;; Add your (defmethod event-msg-handler <event-id> [ev-msg] <body>)s here...
-  (defmethod event-msg-handler :room/req
+  (defmethod event-msg-handler :message/send
     [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]
     (let [session (:session ring-req)
           identity (:identity session)
           name (:name session)
           email (:email session)
-          message (:text (last event))]
-      (save-message! db-spec message "general" identity)
+          message (:text (last event))
+          record (create-message<! db-spec message "general" identity)]
       (doseq [uid (:any @connected-uids)]
-        (chsk-send! uid [:chat/broadcast {:message (md-to-html-string message)
+        (chsk-send! uid [:chat/broadcast {:id (:id record)
+                                          :message (md-to-html-string message)
                                           :uid identity
                                           :name name
                                           :email email
                                           :hash (bytes->hex (hash/md5 email))}]))))
-  )
+
+  (defmethod event-msg-handler :message/delete
+    [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]
+    (let [session (:session ring-req)
+          identity (:identity session)
+          id (last event)]
+      (delete-message! db-spec id)
+      (doseq [uid (:any @connected-uids)]
+        (chsk-send! uid [:message/delete id]))))
+  
+  (defmethod event-msg-handler :user/typing
+    [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]
+    (logf "user typing")))
 
 (defonce http-server_ (atom nil))
 
