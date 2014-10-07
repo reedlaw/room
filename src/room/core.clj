@@ -35,8 +35,8 @@
               :user "postgres"
               :password "secret"})
 
-(defqueries "room/users.sql")
-(defqueries "room/messages.sql")
+(defqueries "room/users.sql" {:connection db-spec})
+(defqueries "room/messages.sql" {:connection db-spec})
 
 (def backend (session-backend))
 
@@ -57,13 +57,11 @@
 
 (defn landing-pg-handler [req]
   (if (authenticated? req)
-    (let [messages (map #(assoc % :text (md-to-html-string (:text %)) :hash (bytes->hex (hash/md5 (:email %)))) (get-messages db-spec))
+    (let [messages (map #(assoc % :text (md-to-html-string (:text %)) :hash (bytes->hex (hash/md5 (:email %)))) (get-messages))
           email (:email (:session req))
-          hash (bytes->hex (hash/md5 email))
-          user {:id (:identity (:session req))
-                :email email
-                :name (:name (:session req))
-                :hash hash}]
+          db-user (first (get-user {:id (:identity (:session req))}))
+          hash (bytes->hex (hash/md5 (:email db-user)))
+          user (conj (dissoc db-user :password) {:hash hash})]
       (html5
        [:head
         [:title "Room"]
@@ -71,8 +69,9 @@
         (include-css "/css/font-awesome/css/font-awesome.css")
         (javascript-tag
          (str "messages = " (json/write-str messages :value-fn timestamp-to-string)
-              ";\nrooms = " (json/write-str (get-rooms db-spec))
-              ";\nuser = " (json/write-str user)))]
+              ";\nchats = " (json/write-str (map :chat (get-chats)))
+              ";\nuser = " (json/write-str user)
+              ";\nusers = " (json/write-str (get-users))))]
        [:div.container
         [:div {:id "app"}]]
        [:script {:src "/js/react.js"}]
@@ -105,7 +104,7 @@
          password (get-in request [:form-params "password"])
          session (-> (:session request)
                      (assoc :name username))
-         user (first (get-user-by-name db-spec username))]
+         user (first (get-user-by-name {:name username}))]
      (if (and user (hs/check-password password (:password user)))
        (-> (redirect (get-in request [:query-params :next] "/"))
            (assoc :session (assoc session :identity (:id user) :email (:email user))))
@@ -147,9 +146,10 @@
 (do ; Server-side methods
   (defmethod event-msg-handler :default ; Fallback
     [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-    (let [uid     (get-in ring-req [:session :identity])]
+    (let [session (:session ring-req)
+          uid (:uid session)]
       (logf "Unhandled event: %s" event)
-      (when-not (:dummy-reply-fn (meta ?reply-fn))
+      (when ?reply-fn
         (?reply-fn {:umatched-event-as-echoed-from-from-server event}))))
 
   ;; Add your (defmethod event-msg-handler <event-id> [ev-msg] <body>)s here...
@@ -160,15 +160,18 @@
           name (:name session)
           email (:email session)
           message (:text (last event))
-          room (:room (last event))
-          record (create-message<! db-spec message room identity)]
+          chat (:chat (last event))
+          record (create-message<! {:text  message
+                                    :chat chat
+                                    :authorid identity}
+                                  )]
       (doseq [uid (:any @connected-uids)]
         (chsk-send! uid [:chat/broadcast {:id (:id record)
                                           :message (md-to-html-string message)
                                           :uid identity
                                           :name name
                                           :email email
-                                          :room (:room record)
+                                          :chat (:chat record)
                                           :hash (bytes->hex (hash/md5 email))}]))))
 
   (defmethod event-msg-handler :message/delete
@@ -176,7 +179,7 @@
     (let [session (:session ring-req)
           identity (:identity session)
           id (last event)]
-      (delete-message! db-spec id)
+      (delete-message! {:id  id})
       (doseq [uid (:any @connected-uids)]
         (chsk-send! uid [:message/delete id]))))
   

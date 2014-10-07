@@ -13,48 +13,78 @@ body {
     height: 100%;
 }
 
+/* nav bar */
+
 #nav {
     position: fixed;
-    left: 0;
-    top: 100px;
+    top: 10px;
+    left: 10px;
     width: 200px;
     height: 100%;
 }
 
+#userimage {
+    float: left;
+    width: 56px;
+    height: 56px;
+    border-radius: 50px;
+    -webkit-border-radius: 50px;
+    -moz-border-radius: 50px;
+    box-shadow: 0 0 2px rgba(0, 0, 0, .6);
+    -webkit-box-shadow: 0 0 2px rgba(255, 255, 255, 1);
+    -moz-box-shadow: 0 0 2px rgba(255, 255, 255, 1);
+}
+
 #usermenu {
-    position: fixed;
     top: 0;
-    height: 100px;
+    height: 50px;
 }
 
 #usermenu a {
     position: absolute;
-    top: 30px;
-    left: 110px;
-}
-
-#userimage {
-    float: left;
-    width: 100px;
-    height: 100px;
+    top: 0px;
+    left: 80px;
+    font-size: 25px;
+    color: rgba(0, 0, 0, .4);
 }
 
 #username {
     position: absolute;
-    top: 10px;
-    left: 110px;
+    top: 35px;
+    left: 80px;
+    font-family: Geneva;
+    font-size: 20px;
+    color: rgba(0, 0, 0, .6);
+    text-shadow: 0px 1px 1px grey;
 }
 
 fa-sign-out {
     position: relative;
     top: -120px;
     left: 110px;
-    color:  #ccc;
+    font-size: 30px;
+
 }
 
 fa-sign-out:hover {
     color: grey;
 }
+
+#chats {
+    border-top: solid;
+    border-width: 1px;
+    color: grey;
+    position: relative;
+    top: 20px;
+}
+
+h2 {
+    color: rgba(0, 0, 0, .6);
+    font-family: Geneva;
+    font-size: 18px;
+}
+
+/* end of nav bar; beginning of content. */
 
 #content {
     left: 200px;
@@ -62,9 +92,17 @@ fa-sign-out:hover {
     height: 100%;   
 }
 
+#header {
+    position: fixed;
+    top: 0;
+    left: 200px;
+    height: 100px;
+    padding: 10px;
+}
+
 #body {
     position: fixed;
-    top: 0px;
+    top: 100px;
     right: 0px;
     left: 200px;
     bottom: 100px;
@@ -87,21 +125,33 @@ a.avatar {
     position: relative;
     top: 0px;
     left: 0px;
-    width:20%;
+    height: 30px;
+    width: 30px;
+}
+
+a.avatar img{
+    width: 30px;
+    height: 30px;
+    border-radius: 20px;
+    -webkit-border-radius: 20px;
+    -moz-border-radius: 20px;
+    box-shadow: 0 0 1px rgba(0, 0, 0, .6);
+    -webkit-box-shadow: 0 0 1px rgba(0, 0, 0, .6);
+    -moz-box-shadow: 0 0 1px rgba(0, 0, 0, .6);
+
 }
 
 .message-body {
     position: relative;
     top: -40px;
-    left: 32px;
+    left: 36px;
     width: 80%;
 }
 
 a.username {   
     color: black;
-    padding: 0 5 5 15px;
     font-family: Helvetica;
-    font-size: 20px;
+    font-size: 18px;
 }
 
 span.time {
@@ -128,9 +178,11 @@ i.fa.fa-times {
     color: #ccc;
     cursor: pointer;
 }
+
 i.fa.fa-times:hover {
     color: grey;
 }
+
 #footer {
     position: fixed;
     bottom: 0px;
@@ -144,3 +196,9 @@ i.fa.fa-times:hover {
     top: 10px;
     left: 100px;
 }
+
+/* about fonts:[css].classname {
+color: #333333;
+font-family: Tahoma, Geneva, sans-serif;
+}[/css] */ 
+

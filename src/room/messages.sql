@@ -1,23 +1,23 @@
 -- name: get-messages
 -- Gets all messages
-SELECT messages.id, text, room, name, email, author_id, created_at
+SELECT messages.id, text, chat, name, email, author_id, created_at
 FROM messages
 INNER JOIN users ON author_id = users.id
 
--- name: get-rooms
--- Gets all room names
-SELECT DISTINCT room
+-- name: get-chats
+-- Gets all chat names
+SELECT DISTINCT chat
 FROM messages
 
--- name: get-messages-by-room
--- Gets all messages by room
-SELECT text, room, name
+-- name: get-messages-by-chat
+-- Gets all messages by chat
+SELECT text, chat, name
 FROM messages
 INNER JOIN users ON author_id = users.id
-WHERE room = :room
+WHERE chat = :chat
 
 -- name: create-message<!
-INSERT INTO messages ( text, room, author_id, created_at ) VALUES ( :text, :room, :authorid, now() )
+INSERT INTO messages ( text, chat, author_id, created_at ) VALUES ( :text, :chat, :authorid, now() )
 
 -- name: update-message!
 UPDATE messages
@@ -33,7 +33,7 @@ WHERE id = :id
 CREATE TABLE messages (
 id SERIAL,
 text text,
-room text,
+chat text,
 author_id integer,
 created_at timestamp,
 updated_at timestamp,

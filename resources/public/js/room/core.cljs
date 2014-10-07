@@ -3,9 +3,9 @@
    [cljs.core.async.macros :as asyncm :refer (go go-loop)])
   (:require
    [room.session :as session]
+   [room.chats :as chats]
    [reagent.core :as reagent :refer [atom]]
-   [secretary.core :as secretary
-    :include-macros true :refer [defroute dispatch!]]
+   [secretary.core :as secretary :include-macros true :refer [defroute dispatch!]]
    [cljs.core.async :as async :refer (<! >! put! chan timeout)]
    [taoensso.encore :as encore :refer (logf)]
    [taoensso.sente  :as sente :refer (cb-success?)]
@@ -31,8 +31,8 @@
 (def rms (atom (sorted-map)))
 (def message-counter (atom 0))
 
-(defn add-message [id author text time room]
-  (swap! msgs assoc id {:id id :author author :text text :time time :room room}))
+(defn add-message [id author text time chat]
+  (swap! msgs assoc id {:id id :author author :text text :time time :chat chat}))
 
 (defn delete-message [id]
   (swap! msgs dissoc id))
@@ -44,7 +44,7 @@
                 :hash (get m "hash")
                 }
         id (get m "id")]
-    (add-message id author (get m "text") (get m "created_at") (get m "room"))))
+    (add-message id author (get m "text") (get m "created_at") (get m "chat"))))
 
 (defmulti event-msg-handler :id) ; Dispatch on event-id
 ;; Wrap for logging, catching, etc.:
@@ -73,17 +73,17 @@
        (= command :chat/broadcast) (let [msg-id (:id params)
                                          msg (:message params)
                                          uid (:uid params)
-                                         room (:room params)
+                                         chat (:chat params)
                                          author {:name (:name params)
                                                  :email (:email params)
                                                  :hash (:hash params)
                                                  :id uid}]
-                                (add-message msg-id author msg (js/moment) room))
+                                (add-message msg-id author msg (js/moment) chat))
        (= command :message/delete) (delete-message params)))))
 
 (defn send-message [text]
   (logf "Sending message: %s" text)
-  (chsk-send! [:message/send {:text text :room (session/get :current-corner)}]))
+  (chsk-send! [:message/send {:text text :chat (session/get :current-chat)}]))
 
 (defn send-delete-message [id]
   (chsk-send! [:message/delete id]))
@@ -112,10 +112,10 @@
 (def message-input-box (with-meta message-input
                          {:component-did-mount #(.focus (reagent/dom-node %))}))
 
-(defn message-list [{:keys [messages corner]}]
+(defn message-list [{:keys [messages chat]}]
   (fn [props]
     [:ul#message-list
-     (for [message (filter #(= (:room %) corner) (vals @msgs))]
+     (for [message (filter #(= (:chat %) chat) (vals @msgs))]
        (let [id (:id message)
              author (:author message)]
          [:div.message {:key id}
@@ -148,52 +148,44 @@
                            (set! (.-scrollTop n) (.-scrollHeight n))
                            (reset! should-scroll false)))}))))
 
-(defn about []
-  [:h1 "hello"])
+(def current-chat (atom nil))
 
-(defn home [corner]
+(defn home [chat]
   (let [filt (atom :all)]
     (fn []
       (let [messages (vals @msgs)
-            user (js->clj (.-user js/window))
-            rooms (js->clj (.-rooms js/window))]
+            user (js->clj (.-user js/window))]
         [:div#app-container
          [:div#nav
           [:div#usermenu
            [:img#userimage {:src (str "http://www.gravatar.com/avatar/" (user "hash") "?s=100")}]
            [:span#username (user "name")]
-           [:a {:href "/logout"} "Logout"]]
-          [:div#rooms
-           [:h2 "Corners"]
-           [:ul
-            (for [room rooms]
-              [:li {:key (room "room")
-                    :on-click #(secretary/dispatch! (str "/corners/" (room "room")))}
-               [:span.hash "#"]
-               (room "room")])
-            ]]]
+           [:a {:href "/logout"}
+            [:i.fa.fa-sign-out]]]
+          (chats/chat-list (session/get :current-chat))
          [:div#content
+          [:div#header
+           [:i.fa.fa-users]
+           chat]
           [:div#body
-           [message-box {:messages messages :corner corner}]]
+           [message-box {:messages messages :chat chat}]]
           [:div#footer
            [:div {:id "message"}
-            [message-input-box {:on-save send-message}]]]]]))))
+            [message-input-box {:on-save send-message}]]]]]]))))
 
 (defroute "/" []
   (do
-    (session/put! :current-corner "general")))
+    (session/put! :current-chat "general")))
 
-(defroute "/corners/:id" [id]
+(defroute "/chats/:id" [id]
   (do
-    (session/put! :current-corner id)))
+    (session/put! :current-chat id)))
 
 (defn page []
-  [(home (session/get :current-corner))])
-
-(def current-corner (atom nil))
+  [(home (session/get :current-chat))])
 
 (defn init! []
-  (session/put! :current-corner "general")
+  (session/put! :current-chat "general")
   (sente/start-chsk-router! ch-chsk event-msg-handler*)
   (reagent/render-component [page] (.getElementById js/document "app")))
 

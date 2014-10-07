@@ -25,7 +25,7 @@
                  [org.clojure/java.jdbc "0.3.5"]
                  [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
                  [org.clojure/clojurescript "0.0-2356"]
-                 [com.taoensso/sente "1.1.0"]
+                 [com.taoensso/sente "1.2.0"]
                  [com.taoensso/timbre "3.3.1"]
                  [cider/cider-nrepl "0.7.0"]
                  [buddy "0.2.0b2"]
@@ -39,5 +39,5 @@
                  [ring/ring-anti-forgery "1.0.0"]
                  [markdown-clj "0.9.54"]
                  [secretary "1.2.1"]
-                 [yesql "0.4.0"]
+                 [yesql "0.5.0-beta2"]
                  [org.postgresql/postgresql "9.3-1102-jdbc41"]])
