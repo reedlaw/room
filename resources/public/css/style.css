@@ -71,7 +71,6 @@ fa-sign-out:hover {
 }
 
 #chats {
-    border-top: solid;
     border-width: 1px;
     color: grey;
     position: relative;
