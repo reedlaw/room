@@ -26,12 +26,12 @@
   )
 
 (def messages (js->clj (.-messages js/window)))
-
 (def msgs (atom (sorted-map)))
-(def rms (atom (sorted-map)))
-(def message-counter (atom 0))
+(def current-chat (atom nil))
 
 (defn add-message [id author text time chat]
+  (if-not (= chat current-chat)
+    (chats/notify-new-message chat))
   (swap! msgs assoc id {:id id :author author :text text :time time :chat chat}))
 
 (defn delete-message [id]
@@ -148,8 +148,6 @@
                            (set! (.-scrollTop n) (.-scrollHeight n))
                            (reset! should-scroll false)))}))))
 
-(def current-chat (atom nil))
-
 (defn home [chat]
   (let [filt (atom :all)]
     (fn []
@@ -162,7 +160,7 @@
            [:span#username (user "name")]
            [:a {:href "/logout"}
             [:i.fa.fa-sign-out]]]
-          (chats/chat-list (session/get :current-chat))
+          (chats/chat-list (session/get :current-chat))]
          [:div#content
           [:div#header
            [:i.fa.fa-users]
@@ -171,7 +169,7 @@
            [message-box {:messages messages :chat chat}]]
           [:div#footer
            [:div {:id "message"}
-            [message-input-box {:on-save send-message}]]]]]]))))
+            [message-input-box {:on-save send-message}]]]]]))))
 
 (defroute "/" []
   (do

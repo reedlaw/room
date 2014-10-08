@@ -59,7 +59,9 @@
   (if (authenticated? req)
     (let [messages (map #(assoc % :text (md-to-html-string (:text %)) :hash (bytes->hex (hash/md5 (:email %)))) (get-messages))
           email (:email (:session req))
-          db-user (first (get-user {:id (:identity (:session req))}))
+          db-user (first (get-user {:id (:identity (:session req))}
+                                   {:row-fn (fn [row]
+                                              (update-in row [:chats] #(seq (.getArray %))))}))
           hash (bytes->hex (hash/md5 (:email db-user)))
           user (conj (dissoc db-user :password) {:hash hash})]
       (html5

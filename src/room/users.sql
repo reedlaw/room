@@ -1,6 +1,6 @@
 -- name: get-user
 -- Gets a user by id
-SELECT id, name, email, password
+SELECT id, name, email, password, chats
 FROM users
 WHERE id = :id
 
@@ -15,9 +15,9 @@ SELECT *
 FROM users
 WHERE name = :name
 
--- name: update-user-chats!
+-- name: update-user-add-chat!
 UPDATE users
-SET chats = :chats
+SET chats = chats || :chat
 WHERE id = :id
 
 -- name: update-user-friends!
@@ -33,7 +33,7 @@ name text,
 email text,
 password text,
 chats text[],
-friends integer[]
+friends integer[],
 PRIMARY KEY(id),
 UNIQUE(name)
 )

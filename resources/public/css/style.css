@@ -17,10 +17,12 @@ body {
 
 #nav {
     position: fixed;
-    top: 10px;
-    left: 10px;
+    top: 0px;
+    left: 0px;
     width: 200px;
     height: 100%;
+    padding: 10px;
+    box-sizing: border-box;
 }
 
 #userimage {
@@ -36,51 +38,67 @@ body {
 }
 
 #usermenu {
-    top: 0;
     height: 50px;
 }
 
 #usermenu a {
     position: absolute;
-    top: 0px;
     left: 80px;
     font-size: 25px;
-    color: rgba(0, 0, 0, .4);
+    color: rgba(0, 0, 0, .15);
 }
 
 #username {
     position: absolute;
-    top: 35px;
+    top: 40px;
     left: 80px;
     font-family: Geneva;
     font-size: 20px;
-    color: rgba(0, 0, 0, .6);
-    text-shadow: 0px 1px 1px grey;
+    font-weight: bold;
+    color: darkslategrey;
 }
 
-fa-sign-out {
+.fa-sign-out {
     position: relative;
-    top: -120px;
-    left: 110px;
     font-size: 30px;
-
 }
 
-fa-sign-out:hover {
-    color: grey;
+.fa-sign-out:hover {
+    color: darkslategrey;
 }
 
 #chats {
-    border-width: 1px;
-    color: grey;
+    color: rgba(0, 0, 0, .3);
     position: relative;
     top: 20px;
 }
 
+div#chats h2 i.fa {
+    position: relative;
+    left: 5px;
+    font-size: 15px;
+}
+
 h2 {
-    color: rgba(0, 0, 0, .6);
+    color: white;
     font-family: Geneva;
     font-size: 18px;
+    background: grey;
+}
+
+h2 span {
+    position: relative;
+    left: 9px;
+}
+
+li.current {
+    background: sandybrown;
+    color: darkslategrey;
+}
+
+li:hover {
+    color: darkslategrey;
+    cursor: grab;    
 }
 
 /* end of nav bar; beginning of content. */
