@@ -120,7 +120,7 @@
              author (:author message)]
          [:div.message {:key id}
           [:a.avatar {:href (:name author)}
-           [:img {:src (str "http://www.gravatar.com/avatar/" (:hash author) "?s=30")}]]
+           [:img {:src (str "www.gravatar.com/avatar/" (:hash author) "?s=30")}]]
           [:div.message-body
            [:a.username {:href (:name author)} (:name author)]
            [:span.time (.format (.local (.utc js/moment (:time message))) "h:mm a")]
@@ -156,7 +156,7 @@
         [:div#app-container
          [:div#nav
           [:div#usermenu
-           [:img#userimage {:src (str "http://www.gravatar.com/avatar/" (user "hash") "?s=100")}]
+           [:img#userimage {:src (str "//www.gravatar.com/avatar/" (user "hash") "?s=100")}]
            [:span#username (user "name")]
            [:a {:href "/logout"}
             [:i.fa.fa-sign-out]]]
