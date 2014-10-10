@@ -105,18 +105,28 @@ h2 span {
   height: 100%; }
 
 #header {
+  background: #131322;
   position: fixed;
   top: 0;
   left: 200px;
   height: 30px;
   width: 100%;
-  margin: 10px 0px 0px 10px;
-  font-size: 25px;
-  color: #131322; }
+  padding: 10px 0px 0px 12px;
+  font-size: 23px;
+  color: white; }
+  #header span#topic-users {
+    position: fixed;
+    font-size: 15px;
+    right: 0px; }
+    #header span#topic-users:hover {
+      color: #0090DD; }
+    #header span#topic-users ul {
+      position: fixed;
+      right: 0px; }
 
 #body {
   position: fixed;
-  top: 50px;
+  top: 40px;
   right: 0px;
   left: 200px;
   bottom: 100px; }
@@ -124,7 +134,7 @@ h2 span {
 ul#message-list {
   position: absolute;
   overflow: auto;
-  padding: 0;
+  padding: 5px 0px 0px 0px;
   margin: 0;
   height: 100%;
   width: 100%; }
@@ -151,7 +161,7 @@ a.avatar img {
   position: relative;
   top: -40px;
   left: 40px;
-  width: 80%; }
+  width: 90%; }
 
 a.username {
   color: #131322;
@@ -166,7 +176,7 @@ span.time {
 
 span.text {
   position: relative;
-  width: 90%;
+  width: 100%;
   top: -15px;
   color: #440310;
   font-family: Serif;
@@ -194,15 +204,5 @@ i.fa.fa-times:hover {
 #message {
   top: 10px;
   left: 100px; }
-
-/* 
- * about fonts:[css].classname {
- color: #333333;
- font-family: Tahoma, Geneva, sans-serif;
- }[/css]
-
-* about color
-
-*/
 
 /*# sourceMappingURL=style.css.map */

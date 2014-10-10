@@ -1,18 +1,12 @@
 -- name: get-messages
 -- Gets all messages
-SELECT messages.id, text, topic, name, email, author_id, created_at
+SELECT messages.id, text, topics.name AS topic, topic_id, users.name AS author, email, author_id, messages.created_at, messages.updated_at
 FROM messages
 INNER JOIN users ON author_id = users.id
-
--- name: get-messages-by-topic
--- Gets all messages by topic
-SELECT text, topic, name
-FROM messages
-INNER JOIN users ON author_id = users.id
-WHERE topic = :topic
+INNER JOIN topics ON topic_id = topics.id
 
 -- name: create-message<!
-INSERT INTO messages ( text, topic, author_id, created_at ) VALUES ( :text, :topic, :authorid, now() )
+INSERT INTO messages ( text, topic_id, author_id, created_at ) VALUES ( :text, :topicid, :authorid, now() )
 
 -- name: update-message!
 UPDATE messages
@@ -28,7 +22,7 @@ WHERE id = :id
 CREATE TABLE messages (
 id SERIAL,
 text text,
-topic text,
+topic_id integer,
 author_id integer,
 created_at timestamp,
 updated_at timestamp,

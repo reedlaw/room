@@ -1,5 +1,6 @@
 (ns room.topics
   (:require [secretary.core :as secretary :include-macros true :refer [defroute dispatch!]]
+            [room.session :as session]
             [reagent.core :as reagent :refer [atom]]
             [taoensso.encore :as encore :refer (logf)]
             [taoensso.sente  :as sente :refer (cb-success?)]))
@@ -14,24 +15,24 @@
   (def chsk-state state)   ; Watchable, read-only atom
   )
 
-(def topics (atom (js->clj (.-topics js/window))))
-
 (def users (atom (js->clj (.-users js/window))))
+(def topics (atom (sorted-map)))
 
-(defn join-topic [topic]
-  (secretary/dispatch! (str "/topics/" topic)))
+(defn add-topic [id name users]
+  (swap! topics assoc id {:id id :name name :users users}))
 
-(defn add-topic [topic]
-  (if-not (some #(= topic %) @topics)
-    (do
-      (swap! topics conj topic)
-      (chsk-send! [:topic/join topic]))))
+(doseq [t (js->clj (.-topics js/window))]
+  (add-topic (get t "id") (get t "name") (get t "users")))
 
-(defn leave-topic [topic cur]
-  (swap! topics dissoc topic)
-  (chsk-send! [:topic/leave topic])
-  (if (= topic cur)
-    (join-topic (first @topics))))
+(defn jump-to-topic [id]
+  (session/put! :current-topic-id id))
+
+(defn join-topic [id]
+  (secretary/dispatch! (str "/topics/" id)))
+
+(defn leave-topic [id]
+  (swap! topics dissoc id)
+  (chsk-send! [:topic/leave id]))
 
 (defn notify-new-message [topic]
   )
@@ -44,7 +45,7 @@
               stop #(do (reset! val "")
                         (reset! editing false))
               save #(let [v (-> @val str clojure.string/trim)]
-                      (if-not (empty? v) (add-topic v))
+                      (if-not (empty? v) (chsk-send! [:topic/create v]))
                       (stop))]
           [:input {:type "text"
                    :on-change #(reset! val (-> % .-target .-value))
@@ -58,34 +59,45 @@
          "Start a new topic"]))))
 
 (def topic-input-box (with-meta topic-input
-                      {:component-did-update #(.focus (reagent/dom-node %))}))
+                       {:component-did-update #(.focus (reagent/dom-node %))}))
 
-(defn topic-list [cur]
-  [:div#topics
-   [:h2
-    [:i.fa.fa-users] "Topics"]
-   [:ul.fa-ul
-    (for [topic @topics]
-      [:li {:class (if (= (topic "name") cur) "current")
-            :key topic
-            :on-click #(join-topic (topic "name"))}
-       [:i.fa-li.fa.fa-check-square-o]
-       (topic "name")
-       [:i.fa.fa-times-circle {:on-click #(leave-topic (topic "name") cur)}]])
-    [:li
-     [:i.fa-li.fa.fa-search]
-     [:span "More topics"]]
-    [topic-input-box]]
-   [:h2
-    [:i.fa.fa-user] "People"]
-   [:ul.fa-ul
-    (for [user @users]
-      [:li {:key user}
-       [:i.fa-li.fa.fa-square-o]
-       [:span (user "name")]])]])
+(defn topic-list []
+  (let [id (session/get :current-topic-id)]
+    [:div#topics
+     [:h2
+      [:i.fa.fa-users] "Topics"]
+     [:ul.fa-ul
+      (doall (for [topic (vals @topics)]
+               [:li {:class (if (= (:id topic) id) "current")
+                     :key (:id topic)
+                     :on-click #(join-topic (:id topic))}
+                [:i.fa-li.fa.fa-check-square-o]
+                (:name topic)
+                [:i.fa.fa-times-circle {:on-click #(leave-topic (:id topic))}]]))
+      [:li
+       [:i.fa-li.fa.fa-search]
+       [:span "More topics"]]
+      [topic-input-box]]
+     [:h2
+      [:i.fa.fa-user] "People"]
+     [:ul.fa-ul
+      (for [user @users]
+        [:li {:key user}
+         [:i.fa-li.fa.fa-square-o]
+         [:span (user "name")]])]]))
 
-(defn topic-header [topic]
-  [:div#header
-   [:i.fa.fa-users]
-   (str topic " " ((first (filter #(= topic (% "name")) @topics)) "users"))
-   [:i.fa.fa-user]])
+(def topic-box (with-meta topic-list
+                 {:component-did-update #(+ 2 2)}))
+
+(defn topic-header [id]
+  (let [topic (get @topics id)]
+    [:div#header
+     [:i.fa.fa-users]
+     (:name topic)
+     [:span#topic-users
+      (str (count (:users topic)))
+      [:i.fa.fa-user]
+      [:ul#topic-users
+       (for [user (:users topic)]
+         [:li {:key user}
+          user])]]]))

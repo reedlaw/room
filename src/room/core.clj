@@ -38,6 +38,8 @@
 
 (defqueries "room/users.sql" {:connection db-spec})
 (defqueries "room/messages.sql" {:connection db-spec})
+(defqueries "room/subscriptions.sql" {:connection db-spec})
+(defqueries "room/topics.sql" {:connection db-spec})
 
 (def backend (session-backend))
 
@@ -60,9 +62,7 @@
   (if (authenticated? req)
     (let [messages (map #(assoc % :text (md-to-html-string (:text %)) :hash (bytes->hex (hash/md5 (:email %)))) (get-messages))
           email (:email (:session req))
-          db-user (first (get-user {:id (:identity (:session req))}
-                                   {:row-fn (fn [row]
-                                              (update-in row [:topics] #(seq (.getArray %))))}))
+          db-user (first (get-user {:id (:identity (:session req))}))
           hash (bytes->hex (hash/md5 (:email db-user)))
           user (conj (dissoc db-user :password) {:hash hash})]
       (html5
@@ -72,8 +72,10 @@
         (include-css "/css/style.css")
         (javascript-tag
          (str "messages = " (json/write-str messages :value-fn timestamp-to-string)
-              ";\ntopics = " (json/write-str (get-topics)) ; (map #(hash-map (% "name") (last (last %))) (get-topics))
               ";\nuser = " (json/write-str user)
+              ";\ntopics = " (json/write-str (get-topics {:param 42} 
+                                                         {:row-fn (fn [row]
+                                                                    (update-in row [:users] #(seq (.getArray %))))}))
               ";\nusers = " (json/write-str (get-users))))]
        [:div.container
         [:div {:id "app"}]]
@@ -197,9 +199,9 @@
           name (:name session)
           email (:email session)
           message (:text (last event))
-          topic (:topic (last event))
+          topic-id (:topic (last event))
           record (create-message<! {:text  message
-                                    :topic topic
+                                    :topicid topic-id
                                     :authorid identity}
                                   )]
       (doseq [uid (:any @connected-uids)]
@@ -208,7 +210,7 @@
                                           :uid identity
                                           :name name
                                           :email email
-                                          :topic (:topic record)
+                                          :topic-id (:topic_id record)
                                           :hash (bytes->hex (hash/md5 email))}]))))
 
   (defmethod event-msg-handler :message/delete
@@ -220,14 +222,34 @@
       (doseq [uid (:any @connected-uids)]
         (chsk-send! uid [:message/delete id]))))
 
+  (defmethod event-msg-handler :topic/create
+    [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]
+    (let [session (:session ring-req)
+          id (:identity session)
+          name (last event)
+          users (list (:name session))
+          topic (create-topic<! {:name name})]
+      (join-topic! {:userid id :topicid (:id topic)})
+      (doseq [uid (:any @connected-uids)]
+        (chsk-send! uid [:topic/new (assoc topic :users users)]))))
+
   (defmethod event-msg-handler :topic/join
     [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]
     (let [session (:session ring-req)
           id (:identity session)
-          topic (last event)]
-      (update-user-add-topic! {:id id :topic topic})
+          topic-id (last event)]
+      (join-topic! {:userid id :topicid topic-id})
       (doseq [uid (:any @connected-uids)]
         (chsk-send! uid [:message/delete id]))))
+
+  (defmethod event-msg-handler :topic/leave
+    [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]
+    (let [session (:session ring-req)
+          id (:identity session)
+          topic-id (last event)]
+      (leave-topic! {:userid id :topicid topic-id})
+      (doseq [uid (:any @connected-uids)]
+        (chsk-send! uid [:topic/user-left {:user id :topic-id topic-id}]))))
   
   (defmethod event-msg-handler :user/typing
     [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]

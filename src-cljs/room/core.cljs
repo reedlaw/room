@@ -11,10 +11,6 @@
    [taoensso.sente  :as sente :refer (cb-success?)]
    ))
 
-(logf "ClojureScript appears to have loaded correctly.")
-
-(def state (atom {:doc {} :saved? false}))
-
 (let [{:keys [chsk ch-recv send-fn state]}
       (sente/make-channel-socket! "/chsk" ; Note the same path as before
                                   {:type :auto ; e/o #{:auto :ajax :ws}
@@ -25,26 +21,22 @@
   (def chsk-state state)   ; Watchable, read-only atom
   )
 
-(def messages (js->clj (.-messages js/window)))
-(def msgs (atom (sorted-map)))
-(def current-topic (atom nil))
+(def messages (atom (sorted-map)))
 
-(defn add-message [id author text time topic]
-  (if-not (= topic current-topic)
-    (topics/notify-new-message topic))
-  (swap! msgs assoc id {:id id :author author :text text :time time :topic topic}))
+(defn add-message [id author text time topic-id]
+  (swap! messages assoc id {:id id :author author :text text :time time :topic-id topic-id}))
 
 (defn delete-message [id]
-  (swap! msgs dissoc id))
+  (swap! messages dissoc id))
 
-(doseq [m messages]
+(doseq [m (js->clj (.-messages js/window))]
   (let [author {:id (get m "author_id")
-                :name (get m "name")
+                :name (get m "author")
                 :email (get m "email")
                 :hash (get m "hash")
                 }
         id (get m "id")]
-    (add-message id author (get m "text") (get m "created_at") (get m "topic"))))
+    (add-message id author (get m "text") (get m "created_at") (get m "topic_id"))))
 
 (defmulti event-msg-handler :id) ; Dispatch on event-id
 ;; Wrap for logging, catching, etc.:
@@ -61,7 +53,6 @@
   (defmethod event-msg-handler :chsk/state
     [{:as ev-msg :keys [?data]}]
     (if (= ?data {:first-open? true})
-      (logf "Channel socket successfully established!")
       (logf "Channel socket state change: %s" ?data)))
 
   (defmethod event-msg-handler :chsk/recv
@@ -73,17 +64,20 @@
        (= command :topic/broadcast) (let [msg-id (:id params)
                                          msg (:message params)
                                          uid (:uid params)
-                                         topic (:topic params)
+                                         topic-id (:topic-id params)
                                          author {:name (:name params)
                                                  :email (:email params)
                                                  :hash (:hash params)
                                                  :id uid}]
-                                (add-message msg-id author msg (js/moment) topic))
+                                (add-message msg-id author msg (js/moment) topic-id))
+       (= command :topic/new) (let [id (:id params)
+                                    name (:name params)
+                                    users (:users params)]
+                                (topics/add-topic id name users))
        (= command :message/delete) (delete-message params)))))
 
 (defn send-message [text]
-  (logf "Sending message: %s" text)
-  (chsk-send! [:message/send {:text text :topic (session/get :current-topic)}]))
+  (chsk-send! [:message/send {:text text :topic (session/get :current-topic-id)}]))
 
 (defn send-delete-message [id]
   (chsk-send! [:message/delete id]))
@@ -112,10 +106,10 @@
 (def message-input-box (with-meta message-input
                          {:component-did-mount #(.focus (reagent/dom-node %))}))
 
-(defn message-list [{:keys [messages topic]}]
+(defn message-list [{:keys [topic-id]}]
   (fn [props]
     [:ul#message-list
-     (for [message (filter #(= (:topic %) topic) (vals @msgs))]
+     (for [message (filter #(= (:topic-id %) topic-id) (vals @messages))]
        (let [id (:id message)
              author (:author message)]
          [:div.message {:key id}
@@ -148,11 +142,10 @@
                            (set! (.-scrollTop n) (.-scrollHeight n))
                            (reset! should-scroll false)))}))))
 
-(defn home [topic]
+(defn home [topic-id]
   (let [filt (atom :all)]
     (fn []
-      (let [messages (vals @msgs)
-            user (js->clj (.-user js/window))]
+      (let [user (js->clj (.-user js/window))]
         [:div#app-container
          [:div#nav
           [:div#usermenu
@@ -160,28 +153,28 @@
            [:span#username (user "name")]
            [:a {:href "/logout"}
             [:i.fa.fa-sign-out]]]
-          (topics/topic-list (session/get :current-topic))]
+          (topics/topic-list)]
          [:div#content
-          (topics/topic-header topic)
+          (topics/topic-header topic-id)
           [:div#body
-           [message-box {:messages messages :topic topic}]]
+           [message-box {:topic-id topic-id}]]
           [:div#footer
            [:div {:id "message"}
             [message-input-box {:on-save send-message}]]]]]))))
 
 (defroute "/" []
   (do
-    (session/put! :current-topic "general")))
+    (session/put! :current-topic-id 2)))
 
 (defroute "/topics/:id" [id]
   (do
-    (session/put! :current-topic id)))
+    (session/put! :current-topic-id (js/parseInt id))))
 
 (defn page []
-  [(home (session/get :current-topic))])
+  [(home (session/get :current-topic-id))])
 
 (defn ^:export init! []
-  (session/put! :current-topic "general")
+  (session/put! :current-topic-id 2)
   (sente/start-chsk-router! ch-chsk event-msg-handler*)
   (reagent/render-component [page] (.getElementById js/document "app")))
 
