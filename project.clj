@@ -6,10 +6,10 @@
   :cljsbuild
   {:builds
    [{:source-paths ["src-cljs"]
-     :compiler {:output-dir "resources/public/js/"
-                :optimizations :none
+     :compiler {:preamble ["reagent/react.js"]
+                :output-dir "resources/public/js/"
+                :optimizations :simple
                 :output-to "resources/public/js/app.js"
-                :source-map true
                 :pretty-print true}}]}
   :main room.core
   :plugins [[lein-ring "0.8.11"]
@@ -34,7 +34,6 @@
                  [compojure "1.2.0"]
                  [reagent "0.4.2"]
                  [ring "1.3.1"]
-                 [ring/ring-defaults "0.1.2"]
                  [ring/ring-devel "1.3.1"]
                  [ring/ring-anti-forgery "1.0.0"]
                  [markdown-clj "0.9.54"]

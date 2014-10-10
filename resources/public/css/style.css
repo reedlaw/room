@@ -1,221 +1,208 @@
 body {
-    margin: 0;
-    height: 100%;
-    width: 100%;
-}
+  margin: 0;
+  height: 100%;
+  width: 100%; }
 
 .container {
-    height: 100%;
-}
+  height: 100%; }
 
 #app {
-    margin-left: 200px;
-    height: 100%;
-}
+  margin-left: 200px;
+  height: 100%; }
 
 /* nav bar */
-
 #nav {
-    position: fixed;
-    top: 0px;
-    left: 0px;
-    width: 200px;
-    height: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-}
+  background: #003355;
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 200px;
+  height: 100%;
+  box-sizing: border-box; }
 
 #userimage {
-    float: left;
-    width: 56px;
-    height: 56px;
-    border-radius: 50px;
-    -webkit-border-radius: 50px;
-    -moz-border-radius: 50px;
-    box-shadow: 0 0 2px rgba(0, 0, 0, .6);
-    -webkit-box-shadow: 0 0 2px rgba(255, 255, 255, 1);
-    -moz-box-shadow: 0 0 2px rgba(255, 255, 255, 1);
-}
+  float: left;
+  width: 60px;
+  height: 60px;
+  border-radius: 50px;
+  -webkit-border-radius: 50px;
+  -moz-border-radius: 50px;
+  box-shadow: 0 0 5px #131322;
+  -webkit-box-shadow: 0 0 5px #131322;
+  -moz-box-shadow: 0 0 5px #131322; }
 
 #usermenu {
-    height: 50px;
-}
-
-#usermenu a {
+  padding: 10px 0px 20px 10px;
+  height: 50px; }
+  #usermenu a {
     position: absolute;
     left: 80px;
     font-size: 25px;
-    color: rgba(0, 0, 0, .15);
-}
+    color: #131322; }
+    #usermenu a :hover {
+      color: #0088AA; }
 
 #username {
-    position: absolute;
-    top: 40px;
-    left: 80px;
-    font-family: Geneva;
-    font-size: 20px;
-    font-weight: bold;
-    color: darkslategrey;
-}
+  position: absolute;
+  top: 40px;
+  left: 80px;
+  font-family: Geneva;
+  font-size: 20px;
+  font-weight: bold;
+  color: white; }
 
 .fa-sign-out {
-    position: relative;
-    font-size: 30px;
-}
+  position: relative;
+  font-size: 30px; }
 
-.fa-sign-out:hover {
-    color: darkslategrey;
-}
-
-#chats {
-    color: rgba(0, 0, 0, .3);
+#topics {
+  color: white;
+  position: relative; }
+  #topics h2 i.fa {
     position: relative;
-    top: 20px;
-}
-
-div#chats h2 i.fa {
-    position: relative;
-    left: 5px;
-    font-size: 15px;
-}
+    padding: 8px 6px 8px 6px;
+    font-size: 15px; }
+  #topics ul.fa-ul {
+    padding: 0px 0px 0px 10px;
+    font-size: 14px;
+    margin: 0px; }
+    #topics ul.fa-ul li {
+      padding: 5px; }
+      #topics ul.fa-ul li i.fa-li {
+        position: relative;
+        top: 0px;
+        left: -5px; }
+      #topics ul.fa-ul li:hover {
+        background: #004471;
+        cursor: grab; }
+      #topics ul.fa-ul li.current {
+        background: #0088AA;
+        color: white; }
+        #topics ul.fa-ul li.current:hover {
+          background: #0088AA; }
+  #topics i.fa.fa-times-circle {
+    position: absolute;
+    right: 10px;
+    color: #004471;
+    font-size: 15px; }
+    #topics i.fa.fa-times-circle:hover {
+      color: #131322; }
 
 h2 {
-    color: white;
-    font-family: Geneva;
-    font-size: 18px;
-    background: grey;
-}
+  color: white;
+  font-family: Geneva;
+  font-size: 18px;
+  background: #131322; }
 
 h2 span {
-    position: relative;
-    left: 9px;
-}
-
-li.current {
-    background: sandybrown;
-    color: darkslategrey;
-}
-
-li:hover {
-    color: darkslategrey;
-    cursor: grab;    
-}
+  position: relative;
+  left: 9px; }
 
 /* end of nav bar; beginning of content. */
-
 #content {
-    left: 200px;
-    width: 100%;
-    height: 100%;   
-}
+  left: 200px;
+  width: 100%;
+  height: 100%; }
 
 #header {
-    position: fixed;
-    top: 0;
-    left: 200px;
-    height: 100px;
-    padding: 10px;
-}
+  position: fixed;
+  top: 0;
+  left: 200px;
+  height: 30px;
+  width: 100%;
+  margin: 10px 0px 0px 10px;
+  font-size: 25px;
+  color: #131322; }
 
 #body {
-    position: fixed;
-    top: 100px;
-    right: 0px;
-    left: 200px;
-    bottom: 100px;
-}
+  position: fixed;
+  top: 50px;
+  right: 0px;
+  left: 200px;
+  bottom: 100px; }
 
 ul#message-list {
-    position: absolute;
-    overflow: auto;
-    padding: 0;
-    margin: 0;
-    height: 100%;
-    width: 100%;
-}
+  position: absolute;
+  overflow: auto;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  width: 100%; }
 
 .message {
-    position: relative;
-}
+  position: relative; }
 
 a.avatar {
-    position: relative;
-    top: 0px;
-    left: 0px;
-    height: 30px;
-    width: 30px;
-}
+  position: relative;
+  top: 0px;
+  left: 10px; }
 
-a.avatar img{
-    width: 30px;
-    height: 30px;
-    border-radius: 20px;
-    -webkit-border-radius: 20px;
-    -moz-border-radius: 20px;
-    box-shadow: 0 0 1px rgba(0, 0, 0, .6);
-    -webkit-box-shadow: 0 0 1px rgba(0, 0, 0, .6);
-    -moz-box-shadow: 0 0 1px rgba(0, 0, 0, .6);
-
-}
+a.avatar img {
+  width: 28px;
+  height: 30px;
+  border-radius: 20px;
+  -webkit-border-radius: 20px;
+  -moz-border-radius: 20px;
+  box-shadow: 0 0 1px #FFFFBB;
+  -webkit-box-shadow: 0 0 1px #FFFFBB;
+  -moz-box-shadow: 0 0 1px #FFFFBB; }
 
 .message-body {
-    position: relative;
-    top: -40px;
-    left: 36px;
-    width: 80%;
-}
+  position: relative;
+  top: -40px;
+  left: 40px;
+  width: 80%; }
 
-a.username {   
-    color: black;
-    font-family: Helvetica;
-    font-size: 18px;
-}
+a.username {
+  color: #131322;
+  font-family: Helvetica;
+  font-size: 18px; }
 
 span.time {
-    color: grey;
-    padding: 5px;
-    font-family: Helvetica;
-    font-size: 12px;
-}
+  color: #ccc;
+  padding: 5px;
+  font-family: Helvetica;
+  font-size: 12px; }
 
 span.text {
-    position: relative;
-    width: 90%;
-    top: -15px;
-    color: rgba(68,3,16,1);
-    font-family: Serif;
-    font-size: 15px;
-    display: block;
-}
+  position: relative;
+  width: 90%;
+  top: -15px;
+  color: #440310;
+  font-family: Serif;
+  font-size: 15px;
+  display: block; }
 
 i.fa.fa-times {
-    position: absolute;
-    top: 8px;
-    right: 0px;
-    color: #ccc;
-    cursor: pointer;
-}
+  position: absolute;
+  top: 8px;
+  right: 0px;
+  color: #ccc;
+  cursor: pointer; }
 
 i.fa.fa-times:hover {
-    color: grey;
-}
+  color: #004471; }
 
 #footer {
-    position: fixed;
-    bottom: 0px;
-    left: 200px;
-    height: 50px;
-    width: 100%;
-    margin: 0px;
-}
+  position: fixed;
+  bottom: 0px;
+  left: 200px;
+  height: 50px;
+  width: 100%;
+  margin: 0px; }
 
 #message {
-    top: 10px;
-    left: 100px;
-}
+  top: 10px;
+  left: 100px; }
 
-/* about fonts:[css].classname {
-color: #333333;
-font-family: Tahoma, Geneva, sans-serif;
-}[/css] */ 
+/* 
+ * about fonts:[css].classname {
+ color: #333333;
+ font-family: Tahoma, Geneva, sans-serif;
+ }[/css]
 
+* about color
+
+*/
+
+/*# sourceMappingURL=style.css.map */

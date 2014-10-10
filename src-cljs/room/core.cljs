@@ -3,7 +3,7 @@
    [cljs.core.async.macros :as asyncm :refer (go go-loop)])
   (:require
    [room.session :as session]
-   [room.chats :as chats]
+   [room.topics :as topics]
    [reagent.core :as reagent :refer [atom]]
    [secretary.core :as secretary :include-macros true :refer [defroute dispatch!]]
    [cljs.core.async :as async :refer (<! >! put! chan timeout)]
@@ -27,12 +27,12 @@
 
 (def messages (js->clj (.-messages js/window)))
 (def msgs (atom (sorted-map)))
-(def current-chat (atom nil))
+(def current-topic (atom nil))
 
-(defn add-message [id author text time chat]
-  (if-not (= chat current-chat)
-    (chats/notify-new-message chat))
-  (swap! msgs assoc id {:id id :author author :text text :time time :chat chat}))
+(defn add-message [id author text time topic]
+  (if-not (= topic current-topic)
+    (topics/notify-new-message topic))
+  (swap! msgs assoc id {:id id :author author :text text :time time :topic topic}))
 
 (defn delete-message [id]
   (swap! msgs dissoc id))
@@ -44,7 +44,7 @@
                 :hash (get m "hash")
                 }
         id (get m "id")]
-    (add-message id author (get m "text") (get m "created_at") (get m "chat"))))
+    (add-message id author (get m "text") (get m "created_at") (get m "topic"))))
 
 (defmulti event-msg-handler :id) ; Dispatch on event-id
 ;; Wrap for logging, catching, etc.:
@@ -70,20 +70,20 @@
           command (first data)
           params (last data)]
       (cond 
-       (= command :chat/broadcast) (let [msg-id (:id params)
+       (= command :topic/broadcast) (let [msg-id (:id params)
                                          msg (:message params)
                                          uid (:uid params)
-                                         chat (:chat params)
+                                         topic (:topic params)
                                          author {:name (:name params)
                                                  :email (:email params)
                                                  :hash (:hash params)
                                                  :id uid}]
-                                (add-message msg-id author msg (js/moment) chat))
+                                (add-message msg-id author msg (js/moment) topic))
        (= command :message/delete) (delete-message params)))))
 
 (defn send-message [text]
   (logf "Sending message: %s" text)
-  (chsk-send! [:message/send {:text text :chat (session/get :current-chat)}]))
+  (chsk-send! [:message/send {:text text :topic (session/get :current-topic)}]))
 
 (defn send-delete-message [id]
   (chsk-send! [:message/delete id]))
@@ -112,10 +112,10 @@
 (def message-input-box (with-meta message-input
                          {:component-did-mount #(.focus (reagent/dom-node %))}))
 
-(defn message-list [{:keys [messages chat]}]
+(defn message-list [{:keys [messages topic]}]
   (fn [props]
     [:ul#message-list
-     (for [message (filter #(= (:chat %) chat) (vals @msgs))]
+     (for [message (filter #(= (:topic %) topic) (vals @msgs))]
        (let [id (:id message)
              author (:author message)]
          [:div.message {:key id}
@@ -148,7 +148,7 @@
                            (set! (.-scrollTop n) (.-scrollHeight n))
                            (reset! should-scroll false)))}))))
 
-(defn home [chat]
+(defn home [topic]
   (let [filt (atom :all)]
     (fn []
       (let [messages (vals @msgs)
@@ -160,30 +160,28 @@
            [:span#username (user "name")]
            [:a {:href "/logout"}
             [:i.fa.fa-sign-out]]]
-          (chats/chat-list (session/get :current-chat))]
+          (topics/topic-list (session/get :current-topic))]
          [:div#content
-          [:div#header
-           [:i.fa.fa-users]
-           chat]
+          (topics/topic-header topic)
           [:div#body
-           [message-box {:messages messages :chat chat}]]
+           [message-box {:messages messages :topic topic}]]
           [:div#footer
            [:div {:id "message"}
             [message-input-box {:on-save send-message}]]]]]))))
 
 (defroute "/" []
   (do
-    (session/put! :current-chat "general")))
+    (session/put! :current-topic "general")))
 
-(defroute "/chats/:id" [id]
+(defroute "/topics/:id" [id]
   (do
-    (session/put! :current-chat id)))
+    (session/put! :current-topic id)))
 
 (defn page []
-  [(home (session/get :current-chat))])
+  [(home (session/get :current-topic))])
 
-(defn init! []
-  (session/put! :current-chat "general")
+(defn ^:export init! []
+  (session/put! :current-topic "general")
   (sente/start-chsk-router! ch-chsk event-msg-handler*)
   (reagent/render-component [page] (.getElementById js/document "app")))
 

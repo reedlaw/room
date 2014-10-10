@@ -9,6 +9,7 @@
    [ring.middleware.session :refer [wrap-session]]
    [ring.middleware.session.cookie :refer [cookie-store]]
    [ring.middleware.params :refer [wrap-params]]
+   [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
    [ring.util.response :refer [response redirect content-type]]
    [org.httpkit.server :as http-kit-server]
    [clojure.core.async :as async :refer (<! <!! >! >!! put! chan go go-loop)]
@@ -61,29 +62,27 @@
           email (:email (:session req))
           db-user (first (get-user {:id (:identity (:session req))}
                                    {:row-fn (fn [row]
-                                              (update-in row [:chats] #(seq (.getArray %))))}))
+                                              (update-in row [:topics] #(seq (.getArray %))))}))
           hash (bytes->hex (hash/md5 (:email db-user)))
           user (conj (dissoc db-user :password) {:hash hash})]
       (html5
        [:head
         [:title "Room"]
-        (include-css "/css/style.css")
         (include-css "/css/font-awesome/css/font-awesome.css")
+        (include-css "/css/style.css")
         (javascript-tag
          (str "messages = " (json/write-str messages :value-fn timestamp-to-string)
-              ";\nchats = " (json/write-str (map :chat (get-chats)))
+              ";\ntopics = " (json/write-str (get-topics)) ; (map #(hash-map (% "name") (last (last %))) (get-topics))
               ";\nuser = " (json/write-str user)
               ";\nusers = " (json/write-str (get-users))))]
        [:div.container
         [:div {:id "app"}]]
-       [:script {:src "/js/react.js"}]
-       [:script {:src "/js/goog/base.js"}]
-       [:script {:src "/js/app.js"}]
        [:script {:src "/js/moment.min.js"}]
-       [:script "goog.require('room.core')"]))
+       [:script {:src "/js/app.js"}]))
     (html5
      [:div
-      [:a {:href "/login"} "login"]]
+      [:a {:href "/login"} "login"]
+      [:a {:href "/register"} "register"]]
      [:div {:id "app"}])))
 
 (defn login-ctrl
@@ -95,33 +94,68 @@
      [:form {:action "/login"
              :method "post"}
       (anti-forgery-field)
-      [:input {:name "username"
-               :type "text"}]
+      [:input {:name "email"
+               :type "text"
+               :placeholder "Email"}]
       [:input {:name "password"
-               :type "text"}]
+               :type "password"
+               :placeholder "Password"}]
      [:button {:type "submit"}
       "Login"]]])
    (= (:request-method request) :post)
-   (let [username (get-in request [:form-params "username"])
+   (let [email (get-in request [:form-params "email"])
          password (get-in request [:form-params "password"])
+         user (first (get-user-by-email {:email email}))
          session (-> (:session request)
-                     (assoc :name username))
-         user (first (get-user-by-name {:name username}))]
+                     (assoc :email email))]
      (if (and user (hs/check-password password (:password user)))
        (-> (redirect (get-in request [:query-params :next] "/"))
-           (assoc :session (assoc session :identity (:id user) :email (:email user))))
+           (assoc :session (assoc session :identity (:id user) :email (:email user) :name (:name user))))
        (hiccup/html
         [:div
          "Not authorized"])))))
 
+(defn register-ctrl
+  [request]
+  (cond
+   (= (:request-method request) :get)
+   (html5
+    [:div
+     [:form {:action "/register"
+             :method "post"}
+      (anti-forgery-field)
+      [:input {:name "username"
+               :type "text"
+               :placeholder "Name"}]
+      [:input {:name "email"
+               :type "text"
+               :placeholder "Email"}]
+      [:input {:name "password"
+               :type "password"
+               :placeholder "Password"}]
+     [:button {:type "submit"}
+      "Submit"]]])
+   (= (:request-method request) :post)
+   (let [username (get-in request [:form-params "username"])
+         email (get-in request [:form-params "email"])
+         password (hs/make-password (get-in request [:form-params "password"]))
+         user (create-user<! {:email email
+                              :password password
+                              :name username})
+         session (-> (:session request)
+                     (assoc :email email))]
+     (-> (redirect (get-in request [:query-params :next] "/"))
+         (assoc :session (assoc session :identity (:id user) :email (:email user)))))))
+
 (defn logout-ctrl
   [request]
-  (-> (redirect "/login")
+  (-> (redirect "/")
       (assoc :session {})))
 
 (defroutes app
   (GET  "/"      req (landing-pg-handler req))
   (ANY "/login" [] login-ctrl)
+  (ANY "/register" [] register-ctrl)
   (GET  "/chsk"  req (ring-ajax-get-or-ws-handshake req))
   (POST "/chsk"  req (ring-ajax-post                req))
   (GET "/logout" [] logout-ctrl)
@@ -134,10 +168,11 @@
         (assoc-in response [:headers  "Pragma"] "no-cache"))))
 
 (def handler
-    (-> app
-        (wrap-authentication backend)
-        (wrap-params)
-        (wrap-session {:store (cookie-store {:key "a 16-byt3 s3cr3t"})})))
+  (-> app
+      (wrap-anti-forgery)
+      (wrap-authentication backend)
+      (wrap-params)
+      (wrap-session {:store (cookie-store {:key "a 16-byt3 s3cr3t"})})))
 
 (defmulti event-msg-handler :id) ; Dispatch on event-id
 ;; Wrap for logging, catching, etc.:
@@ -162,18 +197,18 @@
           name (:name session)
           email (:email session)
           message (:text (last event))
-          chat (:chat (last event))
+          topic (:topic (last event))
           record (create-message<! {:text  message
-                                    :chat chat
+                                    :topic topic
                                     :authorid identity}
                                   )]
       (doseq [uid (:any @connected-uids)]
-        (chsk-send! uid [:chat/broadcast {:id (:id record)
+        (chsk-send! uid [:topic/broadcast {:id (:id record)
                                           :message (md-to-html-string message)
                                           :uid identity
                                           :name name
                                           :email email
-                                          :chat (:chat record)
+                                          :topic (:topic record)
                                           :hash (bytes->hex (hash/md5 email))}]))))
 
   (defmethod event-msg-handler :message/delete
@@ -181,7 +216,16 @@
     (let [session (:session ring-req)
           identity (:identity session)
           id (last event)]
-      (delete-message! {:id  id})
+      (delete-message! {:id id})
+      (doseq [uid (:any @connected-uids)]
+        (chsk-send! uid [:message/delete id]))))
+
+  (defmethod event-msg-handler :topic/join
+    [{:as ev-msg :keys [event id ?date ring-req ?reply-fn send-fn]}]
+    (let [session (:session ring-req)
+          id (:identity session)
+          topic (last event)]
+      (update-user-add-topic! {:id id :topic topic})
       (doseq [uid (:any @connected-uids)]
         (chsk-send! uid [:message/delete id]))))
   

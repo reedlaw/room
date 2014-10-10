@@ -56,7 +56,7 @@
     attr (if (meta name) (conj (meta name) attr)     attr)]
     [(with-meta name attr) macro-args]))
 
-                  
+                              
                                                                              
                        
                             
@@ -138,27 +138,156 @@
 
 (comment (when-lets [a :a b nil] "foo"))
 
+;;;; Types
+
+;; ClojureScript keywords aren't `identical?` and Clojure doesn't have
+;; `keyword-identical?`. This util helps alleviate the pain of writing
+;;  cross-platform code. Ref. http://goo.gl/be8CGP.
+                                     
+       (def kw-identical? keyword-identical?)
+
+(defn atom? [x]
+                                        
+         (instance? Atom              x))
+
+;; (defn- chan? [x]
+;;   #+clj  (instance? clojure.core.async.impl.channels.ManyToManyChannel x)
+;;   #+cljs (instance?    cljs.core.async.impl.channels.ManyToManyChannel x))
+
+                                                   
+                                                   
+      (defn error?     [x]                      
+                                  (instance? js/Error x))
+(defn error-data [x]
+  "Returns data map iff `x` is an error of any type on platform."
+  (when-let [data-map (or (ex-data x) ; ExceptionInfo
+                                                                  
+                                 (when (instance? js/Error  x) {}))]
+    (merge data-map
+                                                              
+                                         
+                                         
+                                           
+             (let [err x] ; (catch :default t <...)
+               {:type*    (type        err)
+                :message* (.-message   err)
+                :cause*   (.-cause     err)}))))
+
+(comment (error-data (Throwable. "foo"))
+         (error-data (Exception. "foo"))
+         (error-data (ex-info    "foo" {:bar :baz})))
+
+(defn zero-num? [x] (= 0 x)) ; Unlike `zero?`, works on non-nums
+(defn  pos-num? [x] (and (number?  x) (pos? x)))
+(defn nneg-num? [x] (and (number?  x) (not (neg? x))))
+(defn  pos-int? [x] (and (integer? x) (pos? x)))
+(defn nneg-int? [x] (and (integer? x) (not (neg? x))))
+
+(comment (nneg-int? 0))
+
 (def  nnil?   (complement nil?))
 (def  nblank? (complement str/blank?))
 (defn nblank-str? [x] (and (string? x) (nblank? x)))
 
 (comment (map nblank-str? ["foo" "" 5]))
 
+(defn nnil=
+  ([x y]        (and (nnil? x) (= x y)))
+  ([x y & more] (and (nnil? x) (apply = x y more))))
+
+(comment (nnil= nil nil)
+         (nnil= :foo :foo :foo))
+
 (defn nvec? "Is `x` a vector of size `n`?" [n x]
   (and (vector? x) (= (count x) n)))
 
 (comment (nvec? 2 [:a :b]))
 
-(defn first-nth
-  ([coll]           (nth coll 0))
-  ([coll not-found] (nth coll 0 not-found)))
-
                                        ; For easier encore/format portability
       
-(defn format "Removed from cljs.core 0.0-1885, Ref. http://goo.gl/su7Xkj"
-  [fmt & args] (apply gstr/format fmt args))
+(do
+  (defn- undefined->nil [x] (if (undefined? x) nil x))
+  (defn format "Removed from cljs.core 0.0-1885, Ref. http://goo.gl/su7Xkj"
+    [fmt & args] (apply gstr/format fmt (map undefined->nil args))))
 
 ;;;; Validation
+
+;; (defn have*
+;;   ([cond-or-pred x]
+;;      (if (ifn? cond-or-pred)
+;;        (let [pred cond-or-pred] (do (assert (pred x)) x))
+;;        (let [cond cond-or-pred] (do (assert  cond)    x))))
+;;   ([cond-or-pred x & more]
+;;      (if (ifn? cond-or-pred)
+;;        (mapv (partial have* cond-or-pred) (into [x] more))
+;;        (have* cond-or-pred (into [x] more)))))
+
+;; (comment (have* some? 1 2 nil))
+
+;; Helper since we can't use #+clj / #+cljs in macro
+(defn throw-assertion-error [msg]
+                                      
+         (throw (js/Error.       msg)))
+
+                                     
+                                                                    
+                                                                           
+                   
+                       
+                                 
+                         
+                        
+                              
+                                                      
+                                                                  
+                                                      
+                                   
+                       
+                                                    
+                                                                
+                                         
+                                               
+
+                            
+                          
+                              
+                          
+                                  
+                                                        
+                                         
+
+                                             
+                   
+                     
+                                 
+                               
+                                                     
+                                     
+
+(comment
+  (have "foo")
+  (have string? (do (println "eval") "foo"))
+  (have number? (do (println "eval") "foo"))
+  (have true    (do (println "eval") "foo"))
+  (have false   (do (println "eval") "foo"))
+  ;;
+  (have string? (do (println "eval1") "foo")
+                    (do (println "eval2") "bar"))
+  (have number? (do (println "eval1") "foo")
+                    (do (println "eval2") "bar"))
+  (have true    (do (println "eval1") "foo")
+                    (do (println "eval2") "bar"))
+  (have false   (do (println "eval1") "foo")
+                    (do (println "eval2") "bar"))
+  ;;
+  (let [[x y] (have string?     "a" "b")] [x y])
+  (let [[x y] (have (number? 5) "a" "b")] [x y])
+  (let [[x y] (have some?       "a" nil)] [x y])
+  ;;
+  (have-in string? ["a" "b"])
+  (have-in string? (if true ["a" "b"] [1 2]))
+  (have-in string? (mapv str (range 10)))
+  (have-in string? [1 2]))
 
                                 
                                         
@@ -232,20 +361,21 @@
 (comment (try-exdata (/ 5 0))
          (try-exdata (check nil (true? false))))
 
-;;; Useful for map assertions, etc. (does not check that input is a map)
-(defn- set* [x] (if (set? x) x (set x)))
-(defn keys=  [m ks] (=             (set (keys m)) (set* ks)))
-(defn keys<= [m ks] (set/subset?   (set (keys m)) (set* ks)))
-(defn keys>= [m ks] (set/superset? (set (keys m)) (set* ks)))
-;;
-(defn  nnil-keys?  [m ks] (every? #(not (nil? (get m %))) ks))
+(defn vec* [x] (if (vector? x) x (vec x)))
+(defn set* [x] (if (set?    x) x (set x)))
+
+;;; Useful for map assertions, etc. (do *not* check that input is a map)
+(defn keys=      [m ks] (=             (set (keys m)) (set* ks)))
+(defn keys<=     [m ks] (set/subset?   (set (keys m)) (set* ks)))
+(defn keys>=     [m ks] (set/superset? (set (keys m)) (set* ks)))
+(defn keys-nnil? [m ks] (every? #(nnil? (get m %)) ks))
 
 (comment
   (keys=      {:a :A :b :B  :c :C}  #{:a :b})
   (keys<=     {:a :A :b :B  :c :C}  #{:a :b})
   (keys>=     {:a :A :b :B  :c :C}  #{:a :b})
-  (nnil-keys? {:a :A :b :B  :c nil} #{:a :b})
-  (nnil-keys? {:a :A :b nil :c nil} #{:a :b}))
+  (keys-nnil? {:a :A :b :B  :c nil} #{:a :b})
+  (keys-nnil? {:a :A :b nil :c nil} #{:a :b}))
 
 ;;;; Coercions
 ;; `parse-x` => success, or nil
@@ -283,7 +413,7 @@
 
           
     (cond (number? x) (long x)
-          (string? x) (let [x (js/parseInt x)]
+          (string? x) (let [x (js/parseInt x 10)]
                         (when-not (js/isNaN x) x))
           :else        nil)))
 
@@ -372,28 +502,10 @@
                                                          
                                          
 
-;;;; Types
-
-                                                   
-                                                   
-(defn error? [x]
-                       
-         (or (ex-data x) (instance? js/Error x)))
-
-;; (defn- chan? [x]
-;;   #+clj  (instance? clojure.core.async.impl.channels.ManyToManyChannel x)
-;;   #+cljs (instance?    cljs.core.async.impl.channels.ManyToManyChannel x))
-
-
-;;; Often useful for assertions, etc.
-(defn pos-int?  [x] (and (integer? x) (pos? x)))
-(defn nneg-int? [x] (and (integer? x) (not (neg? x))))
-
-(comment (nneg-int? 0))
-
 ;;;; Math
 
 (defn pow [n exp] (Math/pow n exp))
+(defn abs [n]     (if (neg? n) (- n) n)) ; #+clj (Math/abs n) reflects
 
 (defn round
   [n & [type nplaces]]
@@ -401,7 +513,7 @@
         n* (if-not modifier n (* n modifier))
         rounded
         (case (or type :round)
-          ;;; Note same API for both #+clj and #+cljs:
+          ;;; Note same API for both #+clj, #+cljs:
           :round (Math/round (double n*))        ; Round to nearest int or nplaces
           :floor (long (Math/floor (double n*))) ; Round down to -inf
           :ceil  (long (Math/ceil  (double n*))) ; Round up to +inf
@@ -411,7 +523,7 @@
       (/ rounded modifier))))
 
 (def round* round) ; Alias for ns refers
-(defn round2 "Optimized common case." [n] (/ (Math/round (* n 1000.0)) 1000.0))
+(defn round2 "Optimized common case." [n] (/ (Math/round (* n 100.0)) 100.0))
 
 (comment
   (round -1.5 :floor)
@@ -422,19 +534,17 @@
 (defn exp-backoff "Returns binary exponential backoff value."
   [nattempt & [{:keys [factor] min' :min max' :max :or {factor 1000}}]]
   (let [binary-exp (Math/pow 2 (dec nattempt))
-        time (* (+ binary-exp (rand binary-exp)) 0.5 factor)]
-    ;; (cond-> time
-    ;;         min' (max min')
-    ;;         max' (min max'))
+        time       (* (+ binary-exp (rand binary-exp)) 0.5 factor)]
     (long (let [time (if min' (max min' time) time)
                 time (if max' (min max' time) time)]
             time))))
 
 ;;;; Date & time
 
+(defn  now-dt []                                (js/Date.))
 (defn now-udt []
                                    
-         (.valueOf (js/Date.)))
+         (.getTime (js/Date.)))
 
 (defn now-udt-mock-fn "Useful for testing."
   [& [mock-udts]]
@@ -512,47 +622,100 @@
                                                                               
                                                          
 
-(comment (time (dotimes [_ 10000] (.format (simple-date-format "yyyy-MMM-dd")
-                                           (Date.)))))
+(comment (qb 10000 (.format (simple-date-format "yyyy-MMM-dd") (Date.))))
 
 ;;;; Collections
 
-(defn atom? [x]
-                                        
-         (instance? Atom              x))
-
 (defrecord Swapped [new-val return-val])
-(defn      swapped [new-val return-val] (->Swapped new-val return-val))
-(defn- as-swapped [x] (if (instance? Swapped x) x {:new-val x :return-val x}))
+(defn      swapped [new-val return-val] (Swapped. new-val return-val))
+(defn-  as-swapped [x] (if (instance? Swapped x) [(:new-val x) (:return-val x)]
+                           [x x]))
+
+(comment ; TODO Debug, Ref. http://dev.clojure.org/jira/browse/CLJ-979
+  (defrecord Foo1 [x])
+  (instance? Foo1 (Foo1.  "bar"))
+  (instance? Foo1 (->Foo1 "bar"))
+  (compile 'taoensso.encore))
 
 ;; Recall: no `korks` support since it makes `nil` ambiguous (`[]` vs `[nil]`).
+;; This ambiguity extends to (assoc-in {} [] :a), which (along with perf)
+;; is why we special case empty/nil ks.
+(defn- replace-in*
+  "Reduces input with
+  [<type> <ks> <reset-val-or-swap-fn>] or
+         [<ks> <reset-val-or-swap-fn>] ops."
+  [?vf-type m ops]
+  (reduce
+    (fn [accum ?op]
+      (if-not ?op ; Allow conditional ops: (when <pred> <op>), etc.
+        accum
+        (let [[vf-type ks valf] (if-not ?vf-type ?op (cons ?vf-type ?op))]
+          (case vf-type
+            :reset (if (empty? ks) valf (assoc-in accum ks valf))
+            :swap  (if (empty? ks)
+                     (valf accum)
+                     (assoc-in accum ks (valf (get-in accum ks))))))))
+    m ops))
+
+(defn replace-in "Experimental. For use with `swap!`, etc."
+  [m & ops] (replace-in* nil m ops))
+
+(comment
+  (replace-in {}
+    [:reset [:a] {:b :B :c 100}]
+    (when false [:reset [:a :b] :B2]) ; conditionals okay
+    (do (assert true)
+        [:reset [:a :b] :B3]) ; side-effects okay
+    (let [my-swap-fn inc] ; `let`s okay
+      [:swap [:a :c] my-swap-fn]))
+
+  (let [a_ (atom {})]
+    (swap! a_ replace-in
+      [:reset [:a]    {:b :b1 :c :c1 :d 100}]
+      [:swap  [:a :d] inc])))
+
 (defn swap-in!
   "More powerful version of `swap!`:
     * Supports optional `update-in` semantics.
     * Swap fn can return `(swapped <new-val> <return-val>)` rather than just
       <new-val>. This is useful when writing atomic pull fns, etc."
-  [atom_ ks f & args]
-  (let [ks (if (or (nil? ks) (empty? ks)) nil ks)]
-    (loop []
-      (let [old-val @atom_
-            {:keys [new-val return-val]}
-            (if-not ks
-              (as-swapped (apply f old-val args))
-              (let [old-val-in (get-in old-val ks)
-                    {new-val-in :new-val
-                     return-val :return-val}
-                    (as-swapped (apply f old-val-in args))]
-                {:new-val    (assoc-in old-val ks new-val-in)
-                 :return-val return-val}))]
-        ;; Ref. http://goo.gl/rFG8mW:
-        (if-not (compare-and-set! atom_ old-val new-val)
-          (recur)
-          return-val)))))
+  ([atom_ ks f]
+     (if (empty? ks)
+       (loop []
+         (let [old-val @atom_
+               [new-val return-val] (as-swapped (f old-val))]
+           (if-not (compare-and-set! atom_ old-val new-val)
+             (recur) ; Ref. http://goo.gl/rFG8mW
+             return-val)))
 
-;; Actually uses CAS semantics to support `update-in` capability:
-(defn reset-in! [atom_ ks newval] (swap-in! atom_ ks (constantly newval)))
+       (loop []
+         (let [old-val @atom_
+               old-val-in (get-in old-val ks)
+               [new-val-in return-val] (as-swapped (f old-val-in))
+               new-val (assoc-in old-val ks new-val-in)]
+           (if-not (compare-and-set! atom_ old-val new-val)
+             (recur)
+             return-val)))))
+
+  ;; Experimental:
+  ([atom_ ks f & more] {:pre [(even? (count more))]}
+     (let [pairs (into [[ks f]] (partition 2 more))]
+       (swap! atom_ (fn [old-val] (replace-in* :swap old-val pairs))))))
+
+(defn reset-in! "Is to `reset!` as `swap-in!` is to `swap!`."
+  ([atom_ ks new-val]
+     (if (empty? ks)
+       (reset! atom_ new-val)
+       ;; Actually need swap! (CAS) to preserve other keys:
+       (swap!  atom_ (fn [old-val] (assoc-in old-val ks new-val)))))
+
+  ;; Experimental:
+  ([atom_ ks new-val & more] {:pre [(even? (count more))]}
+     (let [pairs (into [[ks new-val]] (partition 2 more))]
+       (swap! atom_ (fn [old-val] (replace-in* :reset old-val pairs))))))
 
 (comment
+  ;;; update-in, `swapped`
   (let [a_ (atom {:a :A :b :B})] ; Returns new-val (default)
     [(swap-in! a_ [] (fn [m] (assoc m :c :C))) @a_])
   (let [a_ (atom {:a :A :b :B})] ; Returns old-val
@@ -560,7 +723,22 @@
   (let [a_ (atom {:a {:b :B}})] ; Returns new-val-in (default)
     [(swap-in! a_ [:a] (fn [m] (assoc m :c :C))) @a_])
   (let [a_ (atom {:a {:b :B}})] ; Returns old-val-in
-    [(swap-in! a_ [:a] (fn [m] (swapped (assoc m :c :C) m))) @a_]))
+    [(swap-in! a_ [:a] (fn [m] (swapped (assoc m :c :C) m))) @a_])
+  (let [a_ (atom {:a {:b 100}})] (swap-in! a_ [:a :b] inc)) ; => 101
+
+  ;;; Bulk atomic updates
+  (let [a_ (atom {})]
+    (swap-in! a_
+      []      (constantly {:a {:b :b1 :c :c1 :d 100}})
+      [:a :b] (constantly :b2)
+      [:a]    #(dissoc % :c)
+      [:a :d] inc))
+
+  (let [a_ (atom {})]
+    (reset-in! a_
+      []      {:a {:b :b1 :c :c1 :d 100}}
+      [:a :b] :b2
+      [:a :d] inc)))
 
 (defn dissoc-in [m ks & dissoc-ks] (apply update-in m ks dissoc dissoc-ks))
 (defn contains-in? [coll ks] (contains? (get-in coll (butlast ks)) (last ks)))
@@ -601,21 +779,25 @@
   [f & args]
   (apply f (apply concat (butlast args) (last args))))
 
+(defn- clj1098
+  "Workaround for Clojure versions [1.4, 1.5) that blow up on `reduce-kv`s
+  against a nil coll, Ref. http://dev.clojure.org/jira/browse/CLJ-1098."
+  [x] (or x {}))
+
 (defn map-kvs [kf vf m]
-  (when m
-    (let [kf (if-not (identical? kf :keywordize) kf (fn [k _] (keyword k)))
-          vf (if-not (identical? vf :keywordize) vf (fn [_ v] (keyword v)))]
+  (if-not m {} ; Note also clj1098-safe
+    (let [kf (if-not (kw-identical? kf :keywordize) kf (fn [k _] (keyword k)))
+          vf (if-not (kw-identical? vf :keywordize) vf (fn [_ v] (keyword v)))]
       (persistent! (reduce-kv (fn [m k v] (assoc! m (if kf (kf k v) k)
                                                    (if vf (vf v v) v)))
-                              (transient {}) (or m {}))))))
+                              (transient {}) m)))))
 
-(defn map-keys [f m] (map-kvs (fn [k _] (f k)) nil m))
+(defn map-keys [f m] (map-kvs     (fn [k _] (f k)) nil m))
 (defn map-vals [f m] (map-kvs nil (fn [_ v] (f v)) m))
 
 (defn filter-kvs [predk predv m]
-  (when m
-    (reduce-kv (fn [m k v] (if (and (predk k) (predv v)) m (dissoc m k)))
-               (or m {}) (or m {}))))
+  (if-not m {} ; Note also clj1098-safe
+    (reduce-kv (fn [m k v] (if (and (predk k) (predv v)) m (dissoc m k))) m m)))
 
 (defn filter-keys [pred m] (filter-kvs pred (constantly true) m))
 (defn filter-vals [pred m] (filter-kvs (constantly true) pred m))
@@ -626,35 +808,43 @@
   "Smaller, common-case version of `filter-vals`. Esp useful with `nil?`/`blank?`
   pred when constructing maps: {:foo (when _ <...>) :bar (when _ <...>)} in a
   way that preservers :or semantics."
-  [pred m] (reduce-kv (fn [m k v] (if (pred v) (dissoc m k) m )) m m))
+  [pred m]
+  (if-not m {} ; Note also clj1098-safe
+    (reduce-kv (fn [m k v] (if (pred v) (dissoc m k) m)) m m)))
 
 (comment (remove-vals nil? {:a :A :b false :c nil :d :D}))
 
 ;; (def keywordize-map #(map-kvs :keywordize nil %))
 (defn keywordize-map [m]
-  (when m (reduce-kv (fn [m k v] (assoc m (keyword k) v)) {} m)))
+  (if-not m {} ; Note also clj1098-safe
+    (reduce-kv (fn [m k v] (assoc m (keyword k) v)) {} m)))
 
 (comment (keywordize-map nil)
          (keywordize-map {"akey" "aval" "bkey" "bval"}))
 
 (defn as-map "Cross between `hash-map` & `map-kvs`."
   [coll & [kf vf]]
-  {:pre  [(coll? coll) (or (nil? kf) (fn? kf) (identical? kf :keywordize))
-                       (or (nil? vf) (fn? vf))]
+  {:pre  [(or (coll? coll) (nil? coll))
+          (or (nil? kf) (fn? kf) (kw-identical? kf :keywordize))
+          (or (nil? vf) (fn? vf))]
    :post [(or (nil? %) (map? %))]}
-  (when-let [s' (seq coll)]
-    (let [kf (if-not (identical? kf :keywordize) kf
-               (fn [k _] (keyword k)))]
-      (loop [m (transient {}) [k v :as s] s']
-        (let [k (if-not kf k (kf k v))
-              v (if-not vf v (vf k v))
-              new-m (assoc! m k v)]
-          (if-let [n (nnext s)]
-            (recur new-m n)
-            (persistent! new-m)))))))
+  (when coll
+    (if (empty? coll) {}
+      (let [kf (if-not (kw-identical? kf :keywordize) kf
+                 (fn [k _] (keyword k)))]
+        (loop [m (transient {}) [k v :as s] coll]
+          (let [k (if-not kf k (kf k v))
+                v (if-not vf v (vf k v))
+                new-m (assoc! m k v)]
+            (if-let [n (nnext s)]
+              (recur new-m n)
+              (persistent! new-m))))))))
 
-(comment (as-map ["a" "A" "b" "B" "c" "C"] :keywordize
-           (fn [k v] (case k (:a :b) (str "boo-" v) v))))
+(comment
+  (as-map nil)
+  (as-map [])
+  (as-map ["a" "A" "b" "B" "c" "C"] :keywordize
+    (fn [k v] (case k (:a :b) (str "boo-" v) v))))
 
 (defn into-all "Like `into` but supports multiple \"from\"s."
   ([to from] (into to from))
@@ -704,13 +894,13 @@
          (nth 0)
          persistent!)))
 
-(comment (distinctv        [[:a 1] [:a 1] [:a 2] [:b 1] [:b 3]])
-         (distinctv second [[:a 1] [:a 1] [:a 2] [:b 1] [:b 3]]))
-
 (comment
-  (time (dotimes [_ 10000] (distinctv [:a :a :b :c :d :d :e :a :b :c :d])))
-  (time (dotimes [_ 10000] (doall (distinct [:a :a :b :c :d :d :e :a :b :c :d]))))
-  (time (dotimes [_ 10000] (set [:a :a :b :c :d :d :e :a :b :c :d]))))
+  (distinctv        [[:a 1] [:a 1] [:a 2] [:b 1] [:b 3]])
+  (distinctv second [[:a 1] [:a 1] [:a 2] [:b 1] [:b 3]])
+  (qb 10000
+    (distinctv       [:a :a :b :c :d :d :e :a :b :c :d])
+    (doall (distinct [:a :a :b :c :d :d :e :a :b :c :d]))
+    (set             [:a :a :b :c :d :d :e :a :b :c :d])))
 
 (defn distinct-by "Like `sort-by` for distinct. Based on clojure.core/distinct."
   [keyfn coll]
@@ -778,7 +968,8 @@
                  
                     
                   
-                                                           
+                                                                    
+                                                                    
                                           
                          
                            
@@ -789,10 +980,6 @@
                             
                                   
                                   
-
-                                 
-                                                      
-                                              
 
 ;;;; Strings
 
@@ -971,12 +1158,12 @@
   ([f] ; De-raced, commands
     (let [cache (atom {})] ; {<args> <delay-val>}
       (fn ^{:arglists '([command & args] [& args])} [& [arg1 & argn :as args]]
-        (if (identical? arg1 :mem/del)
-          (do (if (identical? (first argn) :mem/all)
+        (if (kw-identical? arg1 :mem/del)
+          (do (if (kw-identical? (first argn) :mem/all)
                 (reset! cache {})
                 (swap!  cache dissoc argn))
               nil)
-          (let [fresh? (identical? arg1 :mem/fresh)
+          (let [fresh? (kw-identical? arg1 :mem/fresh)
                 args   (if fresh? argn args)]
             @(swap-val! cache args
                (fn [?dv] (if (and ?dv (not fresh?)) ?dv
@@ -985,8 +1172,8 @@
   ([ttl-ms f] ; De-raced, commands, ttl, gc
     (let [cache (atom {})] ; {<args> <[delay-val udt :as cache-val]>}
       (fn ^{:arglists '([command & args] [& args])} [& [arg1 & argn :as args]]
-        (if (identical? arg1 :mem/del)
-          (do (if (identical? (first argn) :mem/all)
+        (if (kw-identical? arg1 :mem/del)
+          (do (if (kw-identical? (first argn) :mem/all)
                 (reset! cache {})
                 (swap!  cache dissoc argn))
               nil)
@@ -997,25 +1184,25 @@
                 (swap! cache
                   (fn [m] (reduce-kv (fn [m* k [dv udt :as cv]]
                                       (if (> (- instant udt) ttl-ms) m*
-                                          (assoc m* k cv))) {} m)))))
+                                          (assoc m* k cv))) {} (clj1098 m))))))
 
-            (let [fresh?  (identical? arg1 :mem/fresh)
+            (let [fresh?  (kw-identical? arg1 :mem/fresh)
                   args    (if fresh? argn args)
-                  instant (now-udt)]
-              @(first-nth
-                (swap-val! cache args
-                  (fn [?cv]
-                    (if (and ?cv (not fresh?)
-                             (let [[_dv udt] ?cv]
-                               (< (- instant udt) ttl-ms))) ?cv
-                      [(delay (apply f args)) instant]))))))))))
+                  instant (now-udt)
+                  [dv]    (swap-val! cache args
+                            (fn [?cv]
+                              (if (and ?cv (not fresh?)
+                                    (let [[_dv udt] ?cv]
+                                      (< (- instant udt) ttl-ms))) ?cv
+                                      [(delay (apply f args)) instant])))]
+              @dv))))))
 
   ([cache-size ttl-ms f] ; De-raced, commands, ttl, gc, max-size
     (let [state (atom {:tick 0})] ; {:tick _
                                   ;  <args> <[dval ?udt tick-lru tick-lfu :as cval]>}
       (fn ^{:arglists '([command & args] [& args])} [& [arg1 & argn :as args]]
-        (if (identical? arg1 :mem/del)
-          (do (if (identical? (first argn) :mem/all)
+        (if (kw-identical? arg1 :mem/del)
+          (do (if (kw-identical? (first argn) :mem/all)
                 (reset! state {:tick 0})
                 (swap!  state dissoc argn))
               nil)
@@ -1030,7 +1217,7 @@
                           m* (if-not ttl-ms m*
                                (reduce-kv (fn [m* k [dv udt _ _ :as cv]]
                                             (if (> (- instant udt) ttl-ms) m*
-                                                (assoc m* k cv))) {} m*))
+                                                (assoc m* k cv))) {} (clj1098 m*)))
                           n-to-prune (- (count m*) cache-size)
                           ;; Then prune by descending tick-sum:
                           m* (if-not (pos? n-to-prune) m*
@@ -1045,19 +1232,17 @@
                                 (apply dissoc m*)))]
                       (assoc m* :tick (:tick m)))))))
 
-            (let [fresh?   (identical? arg1 :mem/fresh)
+            (let [fresh?   (kw-identical? arg1 :mem/fresh)
                   args     (if fresh? argn args)
                   ?instant (when ttl-ms (now-udt))
                   tick'    (:tick @state) ; Accuracy/sync irrelevant
-                  dv
-                  (first-nth
-                   (swap-val! state args
-                     (fn [?cv]
-                       (if (and ?cv (not fresh?)
-                                (or (nil? ?instant)
-                                    (let [[_dv udt] ?cv]
-                                      (< (- ?instant udt) ttl-ms)))) ?cv
-                         [(delay (apply f args)) ?instant tick' 1]))))]
+                  [dv]     (swap-val! state args
+                             (fn [?cv]
+                               (if (and ?cv (not fresh?)
+                                     (or (nil? ?instant)
+                                       (let [[_dv udt] ?cv]
+                                         (< (- ?instant udt) ttl-ms)))) ?cv
+                                         [(delay (apply f args)) ?instant tick' 1])))]
 
               ;; We always adjust counters, even on reads:
               (swap! state
@@ -1075,11 +1260,7 @@
   (def f3 (memoize* 2 nil  (fn [& xs] (Thread/sleep 600) (rand))))
   (def f4 (memoize* 2 5000 (fn [& xs] (Thread/sleep 600) (rand))))
 
-  (time (dotimes [_ 10000] (f0))) ;  ~3ms
-  (time (dotimes [_ 10000] (f1))) ;  ~4ms
-  (time (dotimes [_ 10000] (f2))) ;  ~9ms
-  (time (dotimes [_ 10000] (f3))) ;  ~9ms
-  (time (dotimes [_ 10000] (f4))) ; ~11ms
+  (qb 10000 (f0) (f1) (f2) (f3) (f4)) ; [1.094 2.535 5.397 6.254 7.678]
 
   (f1)
   (f1 :mem/del)
@@ -1113,7 +1294,8 @@
               [nil (reduce-kv
                     (fn [m* id [udt-window-start ncalls]]
                       (if (> (- instant udt-window-start) window-ms) m*
-                          (assoc m* id [udt-window-start ncalls]))) {} m)]))))
+                          (assoc m* id [udt-window-start ncalls]))) {}
+                          (clj1098 m))]))))
 
       (->
        (let [instant (now-udt)]
@@ -1147,22 +1329,36 @@
 
 ;;;; Benchmarking
 
+(def nano-time
+                                  ; Since Unix Epoch
+         ; Since window context, etc., Ref. http://goo.gl/mWZWnR
+  (if-let [perf (aget js/window "performance")]
+    ;; Ref. http://goo.gl/fn84us
+    (if-let [f (or (aget perf "now")  (aget perf "mozNow") (aget perf "msNow")
+                   (aget perf "oNow") (aget perf "webkitNow"))]
+      (fn [] (long (* 1000 (.call f perf))))
+      (fn [] (* 1000 (now-udt))))
+    (fn [] (* 1000 (now-udt)))))
+
                              
                                                             
                                                            
 
-                                                                           
-                                                                           
+                                                                                       
+                                                               
 
                             
-                                                                  
-                
-                             
-                                                                      
-                                                           
-                       
+                                                                                
+               
+                                                                                 
+                                                   
+                      
+                                                                 
 
-(comment (qbench 10000 (doall (range 1000))))
+                                        ; Alias
+
+(comment (qb 2     (Thread/sleep 100))
+         (qb 10000 (first [1 2 3 4 5]) (nth [1 2 3 4 5] 0)))
 
      
             
@@ -1193,6 +1389,7 @@
 (do ; Logging stuff
 
   (defn log [x]
+    ;; (undefined? (aget "console" js/window))
     (if (js* "typeof console != 'undefined'")
       (.log js/console x)
       (js/print x))
@@ -1220,7 +1417,7 @@
            (logging-level-sufficient? :invalid))
 
   (def ^:private lls? logging-level-sufficient?)
-  ;;; Note current lack of [?throwable fmt & xs] support:
+  ;;; Note current lack of macros, [?throwable fmt & xs] support:
   (defn tracef  [fmt & xs] (when (lls? :trace)  (apply logf fmt xs)))
   (defn debugf  [fmt & xs] (when (lls? :debug)  (apply logf fmt xs)))
   (defn infof   [fmt & xs] (when (lls? :info)   (apply logf fmt xs)))
@@ -1245,10 +1442,6 @@
          :hash     (.-hash     loc*) ; "#bang"
          }]
     loc))
-
-      
-(defn set-exp-backoff-timeout! [nullary-f & [nattempt]]
-  (.setTimeout js/window nullary-f (exp-backoff (or nattempt 0))))
 
 ;;;; Ajax
 
@@ -1364,7 +1557,7 @@
         xhr)
 
       (catch js/Error e
-        (logf "Ajax error: %s" e)
+        (errorf "`ajax-lite` error: %s" e)
         (.releaseObject @xhr-pool_ xhr)
         nil))
 
@@ -1418,5 +1611,19 @@
                        
 
 (comment (redirect-resp :temp "/foo" "boo!"))
+
+;;;; DEPRECATED
+
+(def nnil-keys? keys-nnil?)
+(defn first-nth ([coll] (nth coll 0)) ([coll not-found] (nth coll 0 not-found)))
+
+;; Used by Carmine <= v2.7.0
+                                                                              
+
+;; Used by Sente <= v1.1.0
+       (defn set-exp-backoff-timeout! [nullary-f & [nattempt]]
+         (.setTimeout js/window nullary-f (exp-backoff (or nattempt 0))))
+
+                                           
 
 ;;;;;;;;;;;; This file autogenerated from src/taoensso/encore.cljx

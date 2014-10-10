@@ -1,0 +1,257 @@
+$main: #96B1D2;
+$light: #FFFFBB;
+$mlight: #0088AA;
+$medium: #0090DD;
+$mdark: #003355;
+$dark: #131322;
+$shadow: #004471;
+
+body {
+    margin: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.container {
+    height: 100%;
+}
+
+#app {
+    margin-left: 200px;
+    height: 100%;
+}
+
+/* nav bar */
+
+#nav {
+    background: $mdark;
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 200px;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+#userimage {
+    float: left;
+    width: 60px;
+    height: 60px;
+    border-radius: 50px;
+    -webkit-border-radius: 50px;
+    -moz-border-radius: 50px;
+    box-shadow: 0 0 5px $dark;
+    -webkit-box-shadow: 0 0 5px $dark;
+    -moz-box-shadow: 0 0 5px $dark;
+}
+
+#usermenu {
+    padding: 10px 0px 20px 10px;
+    height: 50px;
+    a {
+	position: absolute;
+	left: 80px;
+	font-size: 25px;
+	color: $dark;
+	:hover {
+	    color: $mlight;
+	}
+    }
+}
+
+#username {
+    position: absolute;
+    top: 40px;
+    left: 80px;
+    font-family: Geneva;
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+}
+
+.fa-sign-out {
+    position: relative;
+    font-size: 30px;
+}
+
+#topics {
+    color: white;
+    position: relative;
+    h2 i.fa {
+	position: relative;
+	padding: 8px 6px 8px 6px;
+	font-size: 15px;
+    }
+    ul.fa-ul {
+	padding: 0px 0px 0px 10px;
+	font-size: 14px;
+	margin: 0px;
+	li {
+	    padding: 5px;
+	    i.fa-li {	    
+		position: relative;
+		top: 0px;
+		left: -5px;
+	    }
+	    &:hover {
+		background: $shadow;
+		cursor: grab;
+	    }
+	    &.current {
+		background: $mlight;
+		color: white;
+		&:hover {
+		    background: $mlight;
+		}
+	    }
+
+	}
+    }
+    i.fa.fa-times-circle {
+	position: absolute;
+	right: 10px;
+	color: $shadow;
+	font-size: 15px;
+	&:hover {
+	    color: $dark;
+	}
+    }
+}
+h2 {
+    color: white;
+    font-family: Geneva;
+    font-size: 18px;
+    background: $dark;
+}
+
+h2 span {
+    position: relative;
+    left: 9px;
+}
+
+
+
+/* end of nav bar; beginning of content. */
+
+#content {
+    left: 200px;
+    width: 100%;
+    height: 100%;   
+}
+
+#header {
+    position: fixed;
+    top: 0;
+    left: 200px;
+    height: 30px;
+    width: 100%;
+    margin: 10px 0px 0px 10px;
+    font-size: 25px;
+    color: $dark;
+}
+
+#body {
+    position: fixed;
+    top: 50px;
+    right: 0px;
+    left: 200px;
+    bottom: 100px;
+}
+
+ul#message-list {
+    position: absolute;
+    overflow: auto;
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.message {
+    position: relative;
+}
+
+a.avatar {
+    position: relative;
+    top: 0px;
+    left: 10px;
+}
+
+a.avatar img{
+    width: 28px;
+    height: 30px;
+    border-radius: 20px;
+    -webkit-border-radius: 20px;
+    -moz-border-radius: 20px;
+    box-shadow: 0 0 1px $light;
+    -webkit-box-shadow: 0 0 1px $light;
+    -moz-box-shadow: 0 0 1px $light;
+
+}
+
+.message-body {
+    position: relative;
+    top: -40px;
+    left: 40px;
+    width: 80%;
+}
+
+a.username {   
+    color: $dark;
+    font-family: Helvetica;
+    font-size: 18px;
+}
+
+span.time {
+    color: #ccc;
+    padding: 5px;
+    font-family: Helvetica;
+    font-size: 12px;
+}
+
+span.text {
+    position: relative;
+    width: 90%;
+    top: -15px;
+    color: rgba(68,3,16,1);
+    font-family: Serif;
+    font-size: 15px;
+    display: block;
+}
+
+i.fa.fa-times {
+    position: absolute;
+    top: 8px;
+    right: 0px;
+    color: #ccc;
+    cursor: pointer;
+}
+
+i.fa.fa-times:hover {
+    color: $shadow;
+}
+
+#footer {
+    position: fixed;
+    bottom: 0px;
+    left: 200px;
+    height: 50px;
+    width: 100%;
+    margin: 0px;
+}
+
+#message {
+    top: 10px;
+    left: 100px;
+}
+
+/* 
+ * about fonts:[css].classname {
+ color: #333333;
+ font-family: Tahoma, Geneva, sans-serif;
+ }[/css]
+
+* about color
+
+*/ 
+
