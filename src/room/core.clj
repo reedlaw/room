@@ -73,6 +73,7 @@
         (javascript-tag
          (str "messages = " (json/write-str messages :value-fn timestamp-to-string)
               ";\nuser = " (json/write-str user)
+              ";\nsession = " (json/write-str (:session req))
               ";\ntopics = " (json/write-str (get-topics {:param 42} 
                                                          {:row-fn (fn [row]
                                                                     (update-in row [:users] #(seq (.getArray %))))}))
@@ -84,6 +85,7 @@
     (html5
      [:div
       [:a {:href "/login"} "login"]
+      [:br]
       [:a {:href "/register"} "register"]]
      [:div {:id "app"}])))
 
@@ -145,7 +147,9 @@
                               :password password
                               :name username})
          session (-> (:session request)
-                     (assoc :email email))]
+                     (assoc :email email)
+                     (assoc :identity (:id user))
+                     (assoc :name (:name user)))]
      (-> (redirect (get-in request [:query-params :next] "/"))
          (assoc :session (assoc session :identity (:id user) :email (:email user)))))))
 
