@@ -8,7 +8,8 @@
    [{:source-paths ["src-cljs"]
      :compiler {:preamble ["reagent/react.js"]
                 :output-dir "resources/public/js/"
-                :optimizations :simple
+                :externs ["libs/externs.js"]
+                :optimizations :advanced
                 :output-to "resources/public/js/app.js"
                 :pretty-print true}}]}
   :main room.core

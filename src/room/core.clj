@@ -80,7 +80,7 @@
               ";\nusers = " (json/write-str (get-users))))]
        [:div.container
         [:div {:id "app"}]]
-       [:script {:src "/js/moment.min.js"}]
+       [:script {:src "/js/moment.js"}]
        [:script {:src "/js/app.js"}]))
     (html5
      [:div

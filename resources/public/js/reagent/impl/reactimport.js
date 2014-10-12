@@ -43,5 +43,3 @@ X.addons = false;
 /** @expose */
 X.TransitionGroup = false;
 });
-
-//# sourceMappingURL=reactimport.js.map
