@@ -2,7 +2,7 @@
 
 Room is a chat server with a web client frontend. It uses [Sente](https://github.com/ptaoussanis/sente) for realtime channel sockets, [Reagent](https://github.com/reagent-project/reagent) to leverage React.js from Clojurescript, and [Yesql](https://github.com/krisajenkins/yesql) for storage.
 
-![Screenshot](https://github.com/reed/room/raw/master/doc/room.png)
+![Screenshot](https://github.com/reedlaw/room/raw/master/doc/room.png)
 
 ## Usage
 
