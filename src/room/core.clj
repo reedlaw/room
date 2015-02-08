@@ -74,6 +74,7 @@
          (str "messages = " (json/write-str messages :value-fn timestamp-to-string)
               ";\nuser = " (json/write-str user)
               ";\nsession = " (json/write-str (:session req))
+              ";\nsubscriptions = " (json/write-str (map :name (get-subscriptions {:userid (:id user)})))
               ";\ntopics = " (json/write-str (get-topics {:param 42} 
                                                          {:row-fn (fn [row]
                                                                     (update-in row [:users] #(seq (.getArray %))))}))

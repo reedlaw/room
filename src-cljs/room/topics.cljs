@@ -18,11 +18,13 @@
 (def users (atom (js->clj (.-users js/window))))
 (def topics (atom (sorted-map)))
 
-(defn add-topic [id name users]
-  (swap! topics assoc id {:id id :name name :users users}))
+(defn add-topic [id name users subscribed?]
+  (swap! topics assoc id {:id id :name name :users users :subscribed? subscribed?}))
 
 (doseq [t (js->clj (.-topics js/window))]
-  (add-topic (get t "id") (get t "name") (get t "users")))
+  (let [name (get t "name")
+        subscribed? (>= (.indexOf (.-subscriptions js/window) name) 0)]
+    (add-topic (get t "id") name (get t "users") subscribed?)))
 
 (defn jump-to-topic [id]
   (session/put! :current-topic-id id))
@@ -68,12 +70,17 @@
       [:i.fa.fa-users] "Topics"]
      [:ul.fa-ul
       (doall (for [topic (vals @topics)]
-               [:li {:class (if (= (:id topic) id) "current")
+               [:li {:class (str (if (= (:id topic) id) "current")
+                                 " "
+                                 (if-not (:subscribed? topic) "unsubscribed"))
                      :key (:id topic)
                      :on-click #(join-topic (:id topic))}
-                [:i.fa-li.fa.fa-check-square-o]
+                (if (:subscribed? topic)
+                  [:i.fa-li.fa.fa-check-square-o]
+                  [:i.fa-li.fa.fa-square-o])
                 (:name topic)
-                [:i.fa.fa-times-circle {:on-click #(leave-topic (:id topic))}]]))
+                (if (:subscribed? topic)
+                  [:i.fa.fa-times-circle {:on-click #(leave-topic (:id topic))}])]))
       [:li
        [:i.fa-li.fa.fa-search]
        [:span "More topics"]]

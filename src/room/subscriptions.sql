@@ -1,3 +1,6 @@
+-- name: get-subscriptions
+select name from subscriptions inner join topics on topics.id=subscriptions.topic_id where user_id = :userid
+
 -- name: join-topic!
 INSERT INTO subscriptions ( user_id, topic_id, created_at )
 VALUES ( :userid, :topicid, now() )

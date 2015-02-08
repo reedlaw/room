@@ -1,5 +1,6 @@
 var users = {};
 var user = {};
+var subscriptions = {};
 var messages = {};
 var topics = {};
 var moment = {};

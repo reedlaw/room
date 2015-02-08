@@ -73,7 +73,7 @@
        (= command :topic/new) (let [id (:id params)
                                     name (:name params)
                                     users (:users params)]
-                                (topics/add-topic id name users))
+                                (topics/add-topic id name users false))
        (= command :message/delete) (delete-message params)))))
 
 (defn send-message [text]
